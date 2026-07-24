@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mesa de Treino GTO</title>
+<style>
+  :root{
+    --bg:#0A0E0D; --panel:#101817; --panelSoft:#16211F; --edge:#20302C;
+    --feltA:#1D5142; --feltB:#0C2620; --rail:#2E2018;
+    --gold:#D9A441; --cream:#EFE9DC; --muted:#7E9189;
+    --red:#C4503F; --green:#4FA37C; --blue:#5B87A8;
+    --spade:#141C1A; --heart:#B93A2C; --diamond:#2C6DA8; --club:#2C7A4F;
+    --mono: ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+    --serif: "Iowan Old Style","Palatino Linotype",Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--cream);
+       font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:1240px;margin:0 auto;padding:20px 16px 48px}
+  .mono{font-family:var(--mono)}
+  button,input{-webkit-appearance:none;appearance:none}
+  button{font-family:inherit;cursor:pointer;border:0;margin:0;
+       -webkit-tap-highlight-color:rgba(217,164,65,.25);
+       touch-action:manipulation;user-select:none;-webkit-user-select:none;
+       transition:transform .08s,background-color .15s,border-color .15s}
+  button:active{transform:scale(.97)}
+  button:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+  header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;
+       gap:16px;padding-bottom:16px;margin-bottom:20px;border-bottom:1px solid var(--edge)}
+  h1{font-family:var(--serif);font-size:26px;margin:0;letter-spacing:-.01em;font-weight:600}
+  h1 em{font-style:normal;color:var(--gold)}
+  .subtitle{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.06em;margin:4px 0 0}
+  .stats{display:flex;gap:24px;flex-wrap:wrap}
+  .stat .k{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+  .stat .v{font-family:var(--mono);font-size:19px}
+
+  .grid{display:grid;grid-template-columns:250px minmax(0,1fr);gap:20px;align-items:start}
+  @media(max-width:900px){.grid{grid-template-columns:1fr}}
+
+  aside{background:var(--panel);border:1px solid var(--edge);border-radius:8px;padding:16px}
+  .field{margin-bottom:16px}
+  .field>.label{font-family:var(--mono);font-size:10px;letter-spacing:.16em;color:var(--muted);
+       text-transform:uppercase;margin-bottom:8px}
+  .choice{display:grid;gap:4px}
+  .choice.c2{grid-template-columns:1fr 1fr}
+  .choice.c3{grid-template-columns:1fr 1fr 1fr}
+  .choice button{padding:11px 8px;border-radius:4px;text-align:left;font-size:12px;min-height:40px;
+       background-color:#16211F;border:1px solid #20302C;color:#EFE9DC}
+  .choice.c3 button{text-align:center;padding:7px 2px;font-family:var(--mono);font-size:11px}
+  .choice button.on{background-color:#3A2E12;border-color:#D9A441;color:#E9C169}
+  .note{font-size:11px;color:var(--muted);line-height:1.5;margin:-8px 0 16px}
+  .icmbox{border-radius:4px;padding:8px;margin-bottom:16px;font-family:var(--mono);font-size:10px;
+       line-height:1.5;background:rgba(91,135,168,.1);border:1px solid rgba(91,135,168,.3);color:var(--blue)}
+  .divider{height:1px;background:var(--edge);margin:18px 0}
+  .reset{width:100%;padding:12px;border-radius:4px;background-color:#131C1A;border:1px solid #20302C;
+       color:#7E9189;font-family:var(--mono);font-size:10px;letter-spacing:.14em;min-height:42px}
+  .reset:hover{border-color:var(--red);color:var(--red)}
+
+  .card-panel{background:var(--panel);border:1px solid var(--edge);border-radius:8px;padding:20px}
+  .tags{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
+  .tag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;padding:4px 8px;border-radius:4px;
+       background:var(--panelSoft);border:1px solid var(--edge);color:var(--muted)}
+  .tag.gold{background:rgba(217,164,65,.12);border-color:rgba(217,164,65,.3);color:var(--gold)}
+  .story{font-size:12px;color:var(--muted)}
+
+  .felt{position:relative;min-height:400px;border-radius:999px;border:10px solid var(--rail);
+       background:radial-gradient(ellipse at 50% 40%,var(--feltA) 0%,var(--feltB) 72%);
+       box-shadow:inset 0 0 60px rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center}
+  @media(max-width:640px){.felt{border-radius:36px;min-height:430px}}
+  .seat{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:4px}
+  .puck{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+       font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.04em;
+       background:var(--panelSoft);border:1px solid var(--edge);color:var(--muted)}
+  .puck.hero{background:var(--gold);border-color:var(--gold);color:#1A1206}
+  .seat .st{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--cream)}
+  .seat .bet{font-family:var(--mono);font-size:10px;font-weight:700;padding:1px 8px;border-radius:999px;
+       background:rgba(217,164,65,.14);border:1px solid rgba(217,164,65,.3);color:var(--gold)}
+  .center{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);
+       display:flex;flex-direction:column;align-items:center;gap:10px;z-index:2}
+  .pot{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.1em;padding:4px 16px;
+       border-radius:999px;background:rgba(0,0,0,.35);border:1px solid rgba(217,164,65,.35);color:var(--gold)}
+  .board{display:flex;gap:8px;min-height:74px;align-items:center}
+  .preflop-label{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:rgba(239,233,220,.35)}
+  .tocall{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--red)}
+
+  .pc{position:relative;width:52px;height:74px;border-radius:5px;background:#FCFBF7;
+      box-shadow:0 5px 12px rgba(0,0,0,.5);border:1px solid rgba(0,0,0,.28);overflow:hidden}
+  .pc .r{position:absolute;top:2px;left:5px;line-height:1;font-size:25px;font-weight:800;
+      font-family:ui-sans-serif,"Helvetica Neue",Arial,sans-serif;letter-spacing:-.04em}
+  .pc .p{position:absolute;right:3px;bottom:-2px;line-height:1;font-size:36px}
+  .pc.back{background:#1B3A52;border-color:#0E2436}
+  .pc.s-s{color:var(--spade)} .pc.s-h{color:var(--heart)}
+  .pc.s-d{color:var(--diamond)} .pc.s-c{color:var(--club)}
+
+  .hero-row{position:absolute;left:50%;top:69%;transform:translate(-50%,-50%);
+       display:flex;align-items:center;gap:16px;z-index:4}
+  .ring{position:relative;width:70px;height:70px}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .inner{position:absolute;top:0;right:0;bottom:0;left:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring .num{font-family:var(--mono);font-size:17px;font-weight:700;font-variant-numeric:tabular-nums}
+  .ring .lab{font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:.12em}
+
+  .herodata{display:flex;flex-wrap:wrap;gap:20px;margin-top:16px;padding-top:12px;border-top:1px solid var(--edge)}
+  .herodata .v{font-weight:700}
+
+  .controls{background:var(--panel);border:1px solid var(--edge);border-radius:8px;padding:16px;margin-top:16px}
+  .actrow{margin-bottom:10px}
+  .actrow .rl{font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--muted);
+       text-transform:uppercase;margin-bottom:6px}
+  .actline{display:flex;flex-wrap:wrap;gap:6px}
+  .act{padding:13px 16px;border-radius:4px;font-family:var(--mono);font-size:13px;letter-spacing:.05em;
+       min-height:46px;color:#EFE9DC;background-color:#1E2B28;border:1px solid #35473F}
+  .act.aggro{background-color:#54291F;border-color:#C4503F}
+  .act.passive{background-color:#1C4C3B;border-color:#4FA37C}
+  .act.info{background-color:#22394A;border-color:#5B87A8}
+  .act.gold{background-color:#463612;border-color:#D9A441;color:#F0CE87}
+  .act .sz{color:var(--gold);font-weight:700}
+  .act .dim{color:var(--muted)}
+  .actrow + .actrow{margin-top:12px;padding-top:12px;border-top:1px solid var(--edge)}
+
+  .verdict{font-family:var(--mono);font-size:11px;letter-spacing:.12em;padding:4px 12px;border-radius:4px}
+  .verdict.ok{background:rgba(79,163,124,.15);border:1px solid var(--green);color:var(--green)}
+  .verdict.bad{background:rgba(196,80,63,.15);border:1px solid var(--red);color:var(--red)}
+  .fbgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin:16px 0}
+  .fbgrid .k{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.14em}
+  .fbgrid .v{font-family:var(--serif);font-size:20px}
+  .fbgrid .sub{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .explain{border-radius:4px;padding:12px;background:var(--panelSoft);border:1px solid var(--edge);
+       font-size:12px;line-height:1.6;color:var(--muted);margin-bottom:16px}
+  .explain b{color:var(--cream)}
+  .disclaimer{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.6;margin-top:12px}
+  /* ---- Tabela de ranges ---- */
+  .overlay{position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(4,7,6,.82);z-index:50;
+       display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto}
+  .modal{background:var(--panel);border:1px solid var(--edge);border-radius:10px;
+       padding:20px;max-width:760px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+  .modal h2{font-family:var(--serif);font-size:20px;margin:0 0 4px;font-weight:600}
+  .modal .ctx{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.05em;margin-bottom:14px}
+  .modal .close{float:right;background-color:#1E2B28;border:1px solid #35473F;color:#EFE9DC;
+       border-radius:4px;padding:10px 14px;font-family:var(--mono);font-size:11px;min-height:40px}
+  .modal .close:hover{border-color:var(--red);color:var(--red)}
+  .rangegrid{display:grid;grid-template-columns:repeat(13,1fr);gap:2px}
+  .rc{position:relative;padding-bottom:100%;height:0;border-radius:2px;overflow:hidden;
+      font-family:var(--mono);font-size:9px;font-weight:700;color:rgba(255,255,255,.92);
+      letter-spacing:-.02em;user-select:none}
+  .rc span{position:absolute;top:0;right:0;bottom:0;left:0;display:flex;
+      align-items:center;justify-content:center}
+  .rc.hero{outline:2px solid var(--gold);outline-offset:-1px;z-index:1}
+  .legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:16px;padding-top:14px;border-top:1px solid var(--edge)}
+  .lg{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--muted)}
+  .lg i{width:12px;height:12px;border-radius:2px;display:block}
+  .rsum{display:flex;flex-wrap:wrap;gap:18px;margin-top:14px}
+  .rsum .k{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.14em}
+  .rsum .v{font-family:var(--mono);font-size:17px;font-weight:700}
+  .rhint{font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.6;margin-top:12px}
+
+
+  /* ---- Aviso de JavaScript bloqueado ---- */
+  #jsWarn{background-color:#4A1D18;border:1px solid #C4503F;border-radius:8px;
+       padding:16px;margin-bottom:18px;line-height:1.6;font-size:13px;color:#FFD9D2}
+  #jsWarn b{display:block;font-family:var(--serif);font-size:17px;color:#FF9E8E;margin-bottom:6px}
+  #jsWarn ol{margin:10px 0 0;padding-left:20px}
+  #jsWarn li{margin-bottom:5px}
+  #jsWarn code{font-family:var(--mono);font-size:12px;background-color:#2B1210;padding:1px 5px;border-radius:3px}
+  #errBox{background-color:#4A1D18;border:1px solid #C4503F;border-radius:6px;padding:12px;
+       margin-bottom:14px;font-family:var(--mono);font-size:11px;color:#FFD9D2;line-height:1.6}
+
+  /* ---- Filtros recolhíveis, funciona sem JS ---- */
+  .ftchk{position:absolute;opacity:0;pointer-events:none;width:0;height:0}
+  .ftoggle{display:none;width:100%;padding:14px;border-radius:4px;background-color:#1E2B28;
+       border:1px solid #35473F;color:#E9C169;font-family:var(--mono);font-size:11px;
+       letter-spacing:.16em;text-align:left;min-height:48px;cursor:pointer;
+       -webkit-user-select:none;user-select:none;box-sizing:border-box}
+  .ftoggle .arw{float:right}
+  .ftoggle.pending{border-color:#D9A441;color:#F0CE87}
+  .ftoggle.pending::after{content:"\00b7 aplicar ao fechar";font-family:var(--mono);
+       font-size:9px;color:#D9A441;letter-spacing:.08em;margin-left:8px;text-transform:none}
+  .ftchk:checked ~ .ftoggle .arw{transform:rotate(180deg);display:inline-block}
+  @media(max-width:900px){
+    .ftoggle{display:block}
+    .ftchk:not(:checked) ~ #filterBody{display:none}
+  }
+
+  /* ==========================================================
+     RESPONSIVO
+     ========================================================== */
+  @media(max-width:900px){
+    .grid{grid-template-columns:1fr}
+    #filterBody{margin-top:14px}
+    aside{position:sticky;top:0;z-index:20}
+  }
+
+  @media(max-width:640px){
+    .wrap{padding:14px 10px 40px}
+    header.top{gap:12px;padding-bottom:12px;margin-bottom:14px}
+    h1{font-size:21px}
+    .subtitle{font-size:9px}
+    .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 12px;width:100%}
+    .stat .k{font-size:8px;letter-spacing:.1em}
+    .stat .v{font-size:16px}
+
+    .card-panel{padding:12px}
+    .tags{gap:8px;margin-bottom:12px}
+    .tag{font-size:9px;padding:3px 6px}
+    .story{font-size:11px;order:3;width:100%}
+
+    .felt{min-height:430px;border-radius:34px;border-width:8px}
+    .puck{width:42px;height:42px;font-size:10px}
+    .seat .st{font-size:10px}
+    .seat .bet{font-size:9px;padding:0 6px}
+    .pot{font-size:11px;padding:3px 12px}
+    .board{gap:5px;min-height:58px}
+    .pc{width:42px;height:60px}
+    .pc .r{font-size:20px;top:1px;left:4px}
+    .pc .p{font-size:29px;right:2px;bottom:-2px}
+    .hero-row{gap:10px;top:69%}
+    .ring{width:58px;height:58px}
+    .ring svg{width:58px;height:58px}
+    .ring .num{font-size:15px}
+    .herodata{margin-top:14px;gap:14px}
+
+    .controls{padding:12px}
+    .actline{gap:5px}
+    .act{padding:12px 12px;font-size:12px;flex:1 1 auto;min-width:88px;text-align:center}
+    .actrow .rl{font-size:8px}
+    .fbgrid{grid-template-columns:1fr;gap:12px;margin:12px 0}
+    .fbgrid .v{font-size:18px}
+
+    .overlay{padding:8px;align-items:flex-start}
+    .modal{padding:12px;border-radius:8px}
+    .modal h2{font-size:17px}
+    .modal .ctx{font-size:10px;margin-bottom:10px}
+    .rc{font-size:7px;border-radius:1px}
+    .rangegrid{gap:1px}
+    .legend{gap:8px 12px}
+    .lg{font-size:9px}
+    .rsum{gap:12px}
+    .rsum .v{font-size:15px}
+  }
+
+  @media(max-width:400px){
+    .felt{min-height:400px}
+    .puck{width:38px;height:38px;font-size:9px}
+    .pc{width:37px;height:53px}
+    .pc .r{font-size:18px}
+    .pc .p{font-size:25px}
+  }
+
+  /* mesas muito baixas: evita a grade de ranges espremer */
+  .rangewrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .rangegrid{min-width:320px}
+  .hidden{display:none}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="jsWarn">
+    <b>O JavaScript n&atilde;o est&aacute; rodando nesta janela</b>
+    Voc&ecirc; provavelmente abriu o arquivo pela pr&eacute;-visualiza&ccedil;&atilde;o do iOS (app Arquivos, Mail ou Mensagens).
+    Esse visualizador bloqueia scripts, ent&atilde;o a mesa aparece vazia e nenhum bot&atilde;o funciona. O arquivo est&aacute; correto &mdash; falta abri-lo como p&aacute;gina web:
+    <ol>
+      <li>Arraste o arquivo em <code>app.netlify.com/drop</code> pelo computador e abra o link gerado no celular. N&atilde;o precisa de cadastro.</li>
+      <li>Ou publique em GitHub Pages / Vercel e acesse a URL pela Safari.</li>
+      <li>Ou, s&oacute; para testar r&aacute;pido, abra o arquivo no navegador do computador.</li>
+    </ol>
+  </div>
+
+  <noscript><div id="jsWarn"><b>JavaScript desativado</b>Ative o JavaScript em Ajustes &rsaquo; Safari &rsaquo; Avan&ccedil;ado para usar o treinador.</div></noscript>
+
+  <header class="top">
+    <div>
+      <h1>Mesa de Treino <em>GTO</em></h1>
+      <p class="subtitle">DECISÃO EM 20 SEGUNDOS · FEEDBACK DE EV A CADA MÃO</p>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">Mãos</div><div class="v" id="stHands">0</div></div>
+      <div class="stat"><div class="k">Acerto</div><div class="v" id="stAcc">0%</div></div>
+      <div class="stat"><div class="k">EV perdido</div><div class="v" id="stLost">0.00bb</div></div>
+      <div class="stat"><div class="k">Média/mão</div><div class="v" id="stAvg">0.00bb</div></div>
+      <div class="stat"><div class="k">Tempo médio</div><div class="v" id="stTime">0.0s</div></div>
+    </div>
+  </header>
+
+  <div class="grid">
+    <aside id="sidebar">
+      <input type="checkbox" class="ftchk" id="ftChk">
+      <label class="ftoggle" for="ftChk">FILTROS <span class="arw">&#9662;</span></label>
+      <div id="filterBody">
+      <div class="field"><div class="label">Modelo de EV</div><div class="choice c2" id="fMode"></div></div>
+
+      <div id="icmBlock" class="hidden">
+        <div class="field"><div class="label">Fase do torneio</div><div class="choice c2" id="fPhase"></div></div>
+        <div class="field"><div class="label">Estrutura de premiação</div><div class="choice" id="fPayout"></div></div>
+        <div class="icmbox" id="icmNote"></div>
+      </div>
+
+      <div class="field"><div class="label">Cenário</div><div class="choice" id="fScenario"></div></div>
+      <div class="field"><div class="label">Rua treinada</div><div class="choice c3" id="fStreet"></div></div>
+      <div class="field"><div class="label">Profundidade de stack</div><div class="choice c2" id="fDepth"></div></div>
+      <div class="field"><div class="label">Posição do herói</div><div class="choice c3" id="fHeroPos"></div></div>
+      <div class="field"><div class="label">Ação enfrentada</div><div class="choice c2" id="fFacing"></div></div>
+
+      <div class="divider"></div>
+      <div class="field"><div class="label">Perfil do vilão</div><div class="choice" id="fVillain"></div></div>
+      <p class="note" id="villainNote"></p>
+
+      <div id="trackBlock" class="hidden">
+        <div class="label mono" style="font-size:10px;color:var(--muted);letter-spacing:.14em;margin-bottom:4px">EV PERDIDO ACUMULADO</div>
+        <svg id="track" viewBox="0 0 100 32" preserveAspectRatio="none" style="width:100%;height:36px"></svg>
+      </div>
+      <div class="divider"></div>
+      <button class="reset" id="btnReset">ZERAR SESSÃO</button>
+      </div>
+    </aside>
+
+    <main>
+      <div class="card-panel">
+        <div class="tags">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <span class="tag gold" id="tagScenario"></span>
+            <span class="tag" id="tagMode"></span>
+            <span class="tag" id="tagVillain"></span>
+          </div>
+          <span class="story" id="story"></span>
+        </div>
+
+        <div class="felt" id="felt">
+          <div class="center">
+            <div class="pot" id="pot"></div>
+            <div class="board" id="board"></div>
+            <div class="tocall" id="tocall"></div>
+          </div>
+          <div class="hero-row">
+            <div style="display:flex;gap:8px" id="hole"></div>
+            <div class="ring" id="ring">
+              <svg width="70" height="70">
+                <circle cx="35" cy="35" r="30" fill="none" stroke="var(--edge)" stroke-width="3"></circle>
+                <circle id="ringArc" cx="35" cy="35" r="30" fill="none" stroke="var(--gold)" stroke-width="3"
+                        stroke-linecap="round" stroke-dasharray="188.5" stroke-dashoffset="0"
+                        style="transition:stroke-dashoffset .95s linear,stroke .3s"></circle>
+              </svg>
+              <div class="inner"><span class="num" id="ringNum">20</span><span class="lab">SEG</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="herodata" id="heroData"></div>
+      </div>
+
+      <div class="controls" id="controls"></div>
+      <p class="disclaimer">O motor usa um modelo heurístico calibrado para reproduzir limiares de solver e de equilíbrio de Nash. Para treino sério, substitua a camada de decisão por tabelas exportadas de um solver.</p>
+    </main>
+  </div>
+</div>
+
+<div id="rangeOverlay" class="overlay hidden"><div class="modal" id="rangeModal"></div></div>
+
+<script>
+/* Prova de vida: se este bloco rodar, o banner some. Se ficar
+   visível, o script não foi executado pelo navegador. */
+(function(){
+  var w=document.getElementById("jsWarn");
+  if(w) w.style.display="none";
+})();
+
+/* Erros aparecem na tela, não só no console (que o celular não mostra) */
+window.onerror=function(msg,src,line,col){
+  var box=document.getElementById("errBox");
+  if(!box){
+    box=document.createElement("div");
+    box.id="errBox";
+    var wrap=document.querySelector(".wrap");
+    if(wrap) wrap.insertBefore(box,wrap.firstChild);
+  }
+  box.textContent="Erro: "+msg+" (linha "+line+":"+col+")";
+  return false;
+};
+
+/* ==========================================================
+   1. BARALHO E FORÇA DE MÃO
+   ========================================================== */
+const RANKS="23456789TJQKA", SUITS=["s","h","d","c"];
+const GLYPH={s:"\u2660",h:"\u2665",d:"\u2666",c:"\u2663"};
+const rVal=r=>RANKS.indexOf(r)+2;
+
+function freshDeck(){
+  const d=[];
+  for(const r of RANKS) for(const s of SUITS) d.push(r+s);
+  for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}
+  return d;
+}
+function chen(c1,c2){
+  const a=rVal(c1[0]), b=rVal(c2[0]);
+  const hi=Math.max(a,b), lo=Math.min(a,b);
+  const pts={14:10,13:8,12:7,11:6};
+  let s = pts[hi]!==undefined ? pts[hi] : hi/2;
+  if(a===b) s=Math.max(s*2,5);
+  if(c1[1]===c2[1]) s+=2;
+  if(a!==b){
+    const gap=hi-lo-1;
+    s -= gap===0?0 : gap===1?1 : gap===2?2 : gap===3?4 : 5;
+    if(gap<=1 && hi<12) s+=1;
+  }
+  return Math.round(s*10)/10;
+}
+function handLabel(c1,c2){
+  const a=rVal(c1[0]), b=rVal(c2[0]);
+  const hi=a>=b?c1[0]:c2[0], lo=a>=b?c2[0]:c1[0];
+  if(a===b) return hi+lo;
+  return hi+lo+(c1[1]===c2[1]?"s":"o");
+}
+
+/* ==========================================================
+   2. TABELAS DE CONFIGURAÇÃO
+   ========================================================== */
+const SCENARIOS={rfi:"RFI",threebet:"Pote de 3-Bet",bvb:"Blind vs Blind",ft:"Mesa Final"};
+const VILLAINS={
+  gto:{name:"Equilibrado",note:"Joga próximo do equilíbrio. Nenhum desvio aplicado.",dOpen:0,dCall:0,d3bet:0,dCbet:0},
+  overfold:{name:"Overfolder",note:"Desiste demais fora de posição. Abra e blefe mais.",dOpen:-1.4,dCall:-0.3,d3bet:-1.6,dCbet:-1.2},
+  station:{name:"Calling Station",note:"Paga demais. Corte os blefes e engorde o valor.",dOpen:0.4,dCall:0.9,d3bet:1.8,dCbet:1.4},
+  maniac:{name:"Maniac",note:"Agride sem seleção. Espere e pague mais forte.",dOpen:0.6,dCall:-1.1,d3bet:-0.6,dCbet:0.5}
+};
+const PHASES={bolha:{name:"Bolha",premium:2.2},pos_bolha:{name:"Pós-bolha",premium:1.0},
+              mesa_final:{name:"Mesa final",premium:1.8},heads_up:{name:"Heads-up",premium:0.2}};
+const PAYOUTS={plana:{name:"Premiação plana",mult:0.7},padrao:{name:"Padrão",mult:1.0},ingreme:{name:"Saltos íngremes",mult:1.45}};
+const POS=["UTG","MP","CO","BTN","SB","BB"];
+const OPEN_T={UTG:11.5,MP:10.3,CO:8.6,BTN:7.0,SB:7.6,BB:7.0};
+
+/* ==========================================================
+   3. MOTOR DE DECISÃO
+   limiar = base_posicional + desvio_do_vilão + prêmio_ICM
+   ========================================================== */
+function pushThreshold(st){
+  if(st<=6) return 5.2; if(st<=9) return 6.4;
+  if(st<=12) return 7.5; if(st<=16) return 8.8; return 10.2;
+}
+function icmPremium(){
+  if(cfg.mode!=="icm") return 0;
+  return PHASES[cfg.phase].premium*PAYOUTS[cfg.payout].mult;
+}
+/* Grades de sizing por nó — o treino exige escolher o tamanho certo, não só a ação */
+function raiseSizes(st){ return st>25?[2,2.5,3] : [2,2.2,2.5]; }
+function threeBetSizes(pos){ return pos==="BB"?[3.5,4,4.5]:[3,3.5,4]; }
+const FOUR_BET_SIZES=[2,2.2,2.5];
+const CBET_SIZES=[0.33,0.66,1.0];
+
+function buildPreflopNode(h){
+  const v=VILLAINS[cfg.villain], prem=icmPremium();
+  const s=chen(h.hole[0],h.hole[1]), st=h.stack, acts=[];
+  const tOpen=OPEN_T[h.position]+v.dOpen+prem*0.35;
+  const tPush=pushThreshold(st)+prem+v.dCall*0.5;
+
+  if(h.facing==="none"){
+    acts.push({id:"fold",label:"Fold",ev:0});
+    if(st>14){
+      acts.push({id:"call",label:"Limp",ev:(s-tOpen)*0.11-0.28});
+      acts.push({id:"raise",label:"Raise",ev:(s-tOpen)*0.30,sizes:raiseSizes(st),best:st>25?2.5:2.2,unit:"bb"});
+    }else{
+      acts.push({id:"raise",label:"Raise",ev:(s-tOpen-0.6)*0.22,sizes:[2,2.2,2.5],best:2,unit:"bb"});
+    }
+    if(st<=22) acts.push({id:"allin",label:"All-in",ev:(s-tPush)*0.30});
+  }
+  if(h.facing==="raise"){
+    const tCall=8.6+v.dCall+prem*0.8+(h.position==="BB"?-1.6:0);
+    const t3=10.6+v.d3bet+prem*0.9;
+    acts.push({id:"fold",label:"Fold",ev:0});
+    if(st>14){
+      acts.push({id:"call",label:"Call",ev:(s-tCall)*0.27});
+      acts.push({id:"raise",label:"3-Bet",ev:(s-t3)*0.33,sizes:threeBetSizes(h.position),
+                 best:h.position==="BB"?4:3.5,unit:"bb"});
+    }else{
+      acts.push({id:"call",label:"Call",ev:(s-tCall-0.8)*0.24});
+    }
+    acts.push({id:"allin",label:"All-in",ev:(s-tPush-1.4)*0.31});
+  }
+  if(h.facing==="3bet"){
+    const tCall=10.2+v.dCall+prem*0.9, t4=12.6+v.d3bet+prem;
+    acts.push({id:"fold",label:"Fold",ev:0});
+    acts.push({id:"call",label:"Call",ev:(s-tCall)*0.30});
+    acts.push({id:"raise",label:"4-Bet",ev:(s-t4)*0.36,sizes:FOUR_BET_SIZES,best:2.2,unit:"x"});
+    acts.push({id:"allin",label:"All-in",ev:(s-t4-0.4)*0.34});
+  }
+  return {acts,score:s,note:"Chen "+s.toFixed(1)+" \u00b7 limiar de abertura "+tOpen.toFixed(1)};
+}
+
+function classifyFlop(hole,board){
+  const hv=hole.map(c=>rVal(c[0])).sort((a,b)=>b-a);
+  const bv=board.map(c=>rVal(c[0])).sort((a,b)=>b-a);
+  const all=hole.concat(board), counts={};
+  all.forEach(c=>counts[rVal(c[0])]=(counts[rVal(c[0])]||0)+1);
+  const trips=Object.keys(counts).filter(k=>counts[k]>=3);
+  const paired=hv.filter(r=>bv.indexOf(r)>=0);
+  let strength=1.0, label="Air";
+
+  if(trips.length){
+    if(hv[0]===hv[1] && Number(trips[0])===hv[0]){strength=9.6;label="Trinca (set)";}
+    else {strength=9.0;label="Trinca";}
+  } else if(paired.length===2){strength=8.0;label="Dois pares";}
+  else if(hv[0]===hv[1]){
+    if(hv[0]>bv[0]){strength=8.2;label="Overpair";}
+    else if(hv[0]>bv[2]){strength=5.0;label="Par intermediário do bolso";}
+    else {strength=3.8;label="Underpair";}
+  } else if(paired.length===1){
+    const p=paired[0];
+    if(p===bv[0]){strength=6.6;label="Top pair";}
+    else if(p===bv[1]){strength=4.8;label="Par do meio";}
+    else {strength=4.0;label="Par de baixo";}
+  } else if(hv[0]>bv[0] && hv[1]>bv[0]){strength=2.4;label="Duas overcards";}
+
+  const sc={};
+  all.forEach(c=>sc[c[1]]=(sc[c[1]]||0)+1);
+  const fd=Object.keys(sc).some(s=>sc[s]===4 && hole.some(c=>c[1]===s));
+  if(fd){ strength+=2.1; if(strength<5.2) label="Projeto de flush"; else label+=" + projeto"; }
+
+  const uniq=Array.from(new Set(hv.concat(bv))).sort((a,b)=>a-b);
+  let sd=0;
+  for(let i=0;i<uniq.length;i++){
+    const win=uniq.filter(x=>x>=uniq[i] && x<=uniq[i]+4);
+    if(win.length>=4) sd=Math.max(sd,1.8); else if(win.length===3) sd=Math.max(sd,0.7);
+  }
+  strength+=sd*0.6;
+  return {strength:Math.min(strength,10),label};
+}
+
+function buildFlopNode(h){
+  const v=VILLAINS[cfg.villain];
+  const cl=classifyFlop(h.hole,h.board);
+  const t=4.6+v.dCbet+icmPremium()*0.4;
+  const polar = cl.strength>=7.4 || cl.strength<=2.6;
+  const acts=[
+    {id:"check",label:"Check",ev: cl.strength>=7.4 ? -0.22*h.pot : 0.02*h.pot},
+    {id:"bet",label:"Bet",ev:(cl.strength-t)*0.11*h.pot,sizes:CBET_SIZES,best:polar?0.66:0.33,unit:"pct"}
+  ];
+  acts.push({id:"allin",label:"All-in",ev:(cl.strength-t-(cl.strength>=8.4?1.2:3.4))*0.10*h.pot});
+  return {acts,score:cl.strength,note:cl.label+" \u00b7 limiar de c-bet "+t.toFixed(1)};
+}
+
+function solveNode(node){
+  const sorted=node.acts.slice().sort((a,b)=>b.ev-a.ev);
+  const best=sorted[0], second=sorted[1];
+  const mixed = second && (best.ev-second.ev)<0.14;
+  let freq;
+  if(mixed){
+    const eb=Math.exp(best.ev*3), es=Math.exp(second.ev*3);
+    const p=Math.round(eb/(eb+es)*100);
+    freq=[{id:best.id,label:best.label,pct:p},{id:second.id,label:second.label,pct:100-p}];
+  } else freq=[{id:best.id,label:best.label,pct:100}];
+  const byId={}; node.acts.forEach(a=>byId[a.id]=a);
+  return {best,mixed,freq,byId};
+}
+
+/* ==========================================================
+   4. GERADOR DE MÃOS (respeita todos os filtros)
+   ========================================================== */
+function pick(a){return a[Math.floor(Math.random()*a.length)]}
+
+function stackFor(min,max){
+  if(cfg.depth==="curto")    return 6+Math.floor(Math.random()*10);   // 6–15bb
+  if(cfg.depth==="medio")    return 16+Math.floor(Math.random()*25);  // 16–40bb
+  if(cfg.depth==="profundo") return 41+Math.floor(Math.random()*60);  // 41–100bb
+  return min+Math.floor(Math.random()*(max-min));
+}
+function posFrom(pool){
+  return (cfg.heroPos!=="todas" && pool.indexOf(cfg.heroPos)>=0) ? cfg.heroPos : pick(pool);
+}
+function facingAllowed(f){
+  return cfg.facing==="todas" || cfg.facing===f;
+}
+
+function dealHand(){
+  let key = cfg.scenario==="aleatorio" ? pick(["rfi","threebet","bvb","ft"]) : cfg.scenario;
+  if(cfg.street==="flop") key="threebet";
+  if(cfg.facing==="3bet") key="threebet";
+
+  const deck=freshDeck();
+  const hole=[deck.pop(),deck.pop()];
+  let position,facing,stack,pot,toCall,story;
+
+  if(cfg.street==="flop"){
+    position=posFrom(["BTN","SB","BB","CO"]);
+    facing="none"; stack=stackFor(35,90);
+    pot=Math.round((14+Math.random()*10)*10)/10; toCall=0;
+    const board=[deck.pop(),deck.pop(),deck.pop()];
+    return {scenario:"threebet",position,facing,stack,pot,toCall,
+      story:"Pote de 3-bet, vilão deu check. Você age no flop.",hole,board,street:"flop",deck};
+  }
+
+  if(key==="rfi"){
+    position=posFrom(["UTG","MP","CO","BTN","SB"]);
+    facing="none"; stack=stackFor(20,80); pot=1.5; toCall=0;
+    story="Todos deram fold até você no "+position+".";
+  } else if(key==="threebet"){
+    const asAggressor = facingAllowed("3bet") && (!facingAllowed("raise") || Math.random()<0.5);
+    if(asAggressor){
+      position=posFrom(["CO","BTN"]); facing="3bet";
+      stack=stackFor(35,100); pot=12.5; toCall=7.5;
+      story="Você abriu para 2,5bb no "+position+". O BB fez 3-bet para 10bb.";
+    } else {
+      position=posFrom(["BTN","SB","BB"]); facing="raise";
+      stack=stackFor(30,100); pot=4.0; toCall=2.5;
+      story="O CO abriu para 2,5bb. Você está no "+position+".";
+    }
+  } else if(key==="bvb"){
+    position=posFrom(["SB","BB"]);
+    if(!facingAllowed(position==="SB"?"none":"raise")) position = position==="SB"?"BB":"SB";
+    stack=stackFor(15,60);
+    if(position==="SB"){facing="none";pot=1.5;toCall=0.5;story="Todos deram fold. \u00c9 SB contra BB.";}
+    else {facing="raise";pot=4.0;toCall=2.0;story="O SB abriu para 3bb. Voc\u00ea defende no BB.";}
+  } else {
+    position=posFrom(POS); stack=stackFor(5,18);
+    facing = cfg.facing==="none" ? "none" : cfg.facing==="raise" ? "raise" : (Math.random()<0.55?"none":"raise");
+    if(facing==="3bet") facing="raise";
+    pot = facing==="none" ? 1.5 : 1.5+stack*0.9;
+    toCall = facing==="none" ? 0 : Math.min(stack,2.2);
+    story = facing==="none"
+      ? "Mesa final, "+stack+"bb efetivos. Fold at\u00e9 voc\u00ea no "+position+"."
+      : "Mesa final. Um stack curto foi de all-in antes de voc\u00ea no "+position+".";
+  }
+  return {scenario:key,position,facing,stack,pot,toCall,story,hole,board:[],street:"preflop",deck};
+}
+
+/* ==========================================================
+   5. ESTADO
+   ========================================================== */
+const cfg={mode:"chipev",phase:"mesa_final",payout:"padrao",villain:"gto",
+           scenario:"aleatorio",street:"aleatorio",depth:"aleatorio",heroPos:"todas",facing:"todas"};
+let hand=dealHand(), node=null, gto=null, result=null;
+let timer=null;
+let elapsed=0, startedAt=0;   /* cronômetro: ms decorridos e âncora */
+const history=[];
+
+/* ==========================================================
+   6. RENDER
+   ========================================================== */
+const $=id=>document.getElementById(id);
+
+function choiceGroup(el,options,current,onPick,cols){
+  el.className="choice"+(cols?" c"+cols:"");
+  el.innerHTML="";
+  options.forEach(o=>{
+    const b=document.createElement("button");
+    b.type="button";
+    b.textContent=o.label;
+    if(o.value===current) b.className="on";
+    b.addEventListener("click",()=>onPick(o.value),false);
+    el.appendChild(b);
+  });
+}
+
+function renderSidebar(){
+  choiceGroup($("fMode"),[{value:"chipev",label:"ChipEV"},{value:"icm",label:"ICM"}],cfg.mode,
+    v=>{cfg.mode=v;renderAll();},2);
+  choiceGroup($("fPhase"),Object.keys(PHASES).map(k=>({value:k,label:PHASES[k].name})),cfg.phase,
+    v=>{cfg.phase=v;renderAll();},2);
+  choiceGroup($("fPayout"),Object.keys(PAYOUTS).map(k=>({value:k,label:PAYOUTS[k].name})),cfg.payout,
+    v=>{cfg.payout=v;renderAll();});
+
+  choiceGroup($("fScenario"),
+    [{value:"aleatorio",label:"Aleat\u00f3rio"}].concat(Object.keys(SCENARIOS).map(k=>({value:k,label:SCENARIOS[k]}))),
+    cfg.scenario, v=>{cfg.scenario=v;markPending();});
+
+  choiceGroup($("fStreet"),[{value:"aleatorio",label:"Ambas"},{value:"preflop",label:"Pr\u00e9"},{value:"flop",label:"Flop"}],
+    cfg.street, v=>{cfg.street=v;markPending();},3);
+
+  choiceGroup($("fDepth"),[{value:"aleatorio",label:"Qualquer"},{value:"curto",label:"Curto 6\u201315bb"},
+    {value:"medio",label:"M\u00e9dio 16\u201340bb"},{value:"profundo",label:"Profundo 41bb+"}],
+    cfg.depth, v=>{cfg.depth=v;markPending();},2);
+
+  choiceGroup($("fHeroPos"),[{value:"todas",label:"Todas"}].concat(POS.map(p=>({value:p,label:p}))),
+    cfg.heroPos, v=>{cfg.heroPos=v;markPending();},3);
+
+  choiceGroup($("fFacing"),[{value:"todas",label:"Qualquer"},{value:"none",label:"Mesa aberta"},
+    {value:"raise",label:"Contra raise"},{value:"3bet",label:"Contra 3-bet"}],
+    cfg.facing, v=>{cfg.facing=v;markPending();},2);
+
+  choiceGroup($("fVillain"),Object.keys(VILLAINS).map(k=>({value:k,label:VILLAINS[k].name})),cfg.villain,
+    v=>{cfg.villain=v;renderAll();});
+
+  $("villainNote").textContent=VILLAINS[cfg.villain].note;
+  $("icmBlock").className = cfg.mode==="icm" ? "" : "hidden";
+  $("icmNote").textContent="Pr\u00eamio de risco aplicado: +"+icmPremium().toFixed(1)+" pontos nos limiares de call e all-in.";
+}
+
+function cardHTML(code){
+  const r = code[0]==="T" ? "10" : code[0];
+  return '<div class="pc s-'+code[1]+'"><span class="r">'+r+'</span>'+
+         '<span class="p">'+GLYPH[code[1]]+'</span></div>';
+}
+
+function renderTable(){
+  $("tagScenario").textContent=SCENARIOS[hand.scenario].toUpperCase();
+  $("tagMode").textContent = cfg.mode==="icm" ? "ICM \u00b7 "+PHASES[cfg.phase].name : "CHIPEV";
+  $("tagVillain").textContent="VS "+VILLAINS[cfg.villain].name.toUpperCase();
+  $("story").textContent=hand.story;
+  $("pot").textContent="POTE "+hand.pot.toFixed(1)+"bb";
+  $("board").innerHTML = hand.board.length ? hand.board.map(cardHTML).join("")
+                                           : '<span class="preflop-label">PR\u00c9-FLOP</span>';
+  $("tocall").textContent = hand.toCall>0 ? "PARA PAGAR: "+hand.toCall.toFixed(1)+"bb" : "";
+  $("hole").innerHTML = hand.hole.map(cardHTML).join("");
+
+  document.querySelectorAll(".seat").forEach(n=>n.remove());
+  const felt=$("felt");
+  const heroIdx=POS.indexOf(hand.position);
+  POS.forEach((p,i)=>{
+    /* offset relativo ao herói: 0 = herói, sempre no assento inferior central */
+    const off=(i-heroIdx+POS.length)%POS.length;
+    const ang=(off/POS.length)*Math.PI*2+Math.PI/2;
+    const left=50+42*Math.cos(ang), top=50+38*Math.sin(ang);
+    const isHero=p===hand.position;
+    const folded = hand.facing==="none" && POS.indexOf(p)<POS.indexOf(hand.position);
+    const chips = p==="BB"?1 : p==="SB"?0.5 : 0;
+    const d=document.createElement("div");
+    d.className="seat"; d.style.left=left+"%"; d.style.top=top+"%";
+    d.style.opacity = folded ? .3 : 1;
+    d.innerHTML='<div class="puck'+(isHero?" hero":"")+'">'+p+'</div>'+
+      '<div class="st">'+(isHero?hand.stack:20+i*7)+'bb</div>'+
+      (chips?'<div class="bet">'+chips+'bb</div>':'');
+    felt.appendChild(d);
+  });
+
+  const rows=[["M\u00e3o",handLabel(hand.hole[0],hand.hole[1])],["Posi\u00e7\u00e3o",hand.position],
+              ["Stack",hand.stack+"bb"],["Rua",hand.street==="preflop"?"Pr\u00e9-flop":"Flop"]];
+  $("heroData").innerHTML=rows.map(r=>
+    '<div class="stat"><div class="k">'+r[0]+'</div><div class="v mono">'+r[1]+'</div></div>').join("");
+}
+
+function fmtSize(a,v){
+  if(!a||v==null) return "";
+  if(a.unit==="pct") return Math.round(v*100)+"%";
+  if(a.unit==="x") return v+"x";
+  return Number(v).toFixed(1).replace(/\.0$/,"")+"bb";
+}
+
+function renderControls(){
+  const c=$("controls");
+  if(!result){
+    let html="";
+    const simple=node.acts.filter(a=>!a.sizes), sized=node.acts.filter(a=>a.sizes);
+
+    html+='<div class="actrow"><div class="rl">A\u00e7\u00e3o</div><div class="actline">';
+    simple.forEach(a=>{
+      const cls = a.id==="fold" ? "act" : a.id==="allin" ? "act aggro" : "act passive";
+      const extra = a.id==="allin" ? ' <span class="dim">'+hand.stack+'bb</span>' : "";
+      html+='<button type="button" class="'+cls+'" data-act="'+a.id+'">'+a.label.toUpperCase()+extra+'</button>';
+    });
+    html+='</div></div>';
+
+    sized.forEach(a=>{
+      html+='<div class="actrow"><div class="rl">'+a.label+' \u2014 escolha o tamanho</div><div class="actline">';
+      a.sizes.forEach(s=>{
+        html+='<button type="button" class="act aggro" data-act="'+a.id+'" data-size="'+s+'">'+
+              a.label.toUpperCase()+' <span class="sz">'+fmtSize(a,s)+'</span></button>';
+      });
+      html+='</div></div>';
+    });
+
+    c.innerHTML=html;
+  } else {
+    const a=gto.byId[result.chosenId];
+    const evColor = result.evLoss<0.02?"var(--green)":result.evLoss<0.25?"var(--gold)":"var(--red)";
+    let html='<div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px">'+
+      '<span class="verdict '+(result.correct?"ok":"bad")+'">'+(result.correct?"DENTRO DA ESTRAT\u00c9GIA":"DESVIO")+'</span>'+
+      '<span class="mono" style="font-size:12px;color:var(--muted)">'+node.note+'</span></div>';
+
+    html+='<div class="fbgrid">'+
+      '<div><div class="k">SUA A\u00c7\u00c3O</div><div class="v">'+result.chosenLabel+
+        (result.size!=null?' <span style="color:var(--gold);font-size:14px">'+fmtSize(a,result.size)+'</span>':'')+'</div></div>'+
+      '<div><div class="k">ESTRAT\u00c9GIA IDEAL</div><div class="v">'+
+        gto.freq.map(f=>f.label+" "+f.pct+"%").join(" \u00b7 ")+'</div>'+
+        (result.bestSize!=null?'<div class="sub">tamanho de refer\u00eancia: '+fmtSize(a,result.bestSize)+'</div>':'')+'</div>'+
+      '<div><div class="k">TEMPO DE DECIS\u00c3O</div><div class="v mono" style="color:'+
+        (result.time>20000?"var(--red)":result.time>10000?"var(--gold)":"var(--green)")+'">'+
+        (result.time/1000).toFixed(1)+'s</div>'+
+        '<div class="sub">'+(result.time>20000?"acima da refer\u00eancia de 20s":"dentro da refer\u00eancia de 20s")+'</div></div>'+
+      '<div><div class="k">EV DA JOGADA</div><div class="v mono" style="color:'+evColor+'">'+
+        (result.evLoss<0.02?"0.00bb":"\u2212"+result.evLoss.toFixed(2)+"bb")+'</div>'+
+        (result.sizePenalty>0?'<div class="sub">inclui \u2212'+result.sizePenalty.toFixed(2)+'bb por dimensionamento</div>':'')+
+      '</div></div>';
+
+    const v=VILLAINS[cfg.villain];
+    let exp = cfg.villain==="gto" ? "nenhum. Os limiares est\u00e3o no equil\u00edbrio."
+      : v.note+" Os limiares de abertura e 3-bet foram deslocados em "+
+        (v.dOpen>0?"+":"")+v.dOpen+" e "+(v.d3bet>0?"+":"")+v.d3bet+" pontos.";
+    if(cfg.mode==="icm") exp+=" Camada ICM: pr\u00eamio de risco de +"+icmPremium().toFixed(1)+
+        " sobre calls e all-ins na "+PHASES[cfg.phase].name.toLowerCase()+".";
+    html+='<div class="explain"><b>Ajuste explorat\u00f3rio:</b> '+exp+'</div>';
+
+    const canFlop = hand.street==="preflop" && hand.scenario==="threebet" && cfg.street!=="preflop" &&
+                    (result.chosenId==="call"||result.chosenId==="raise");
+    html+='<div class="actline" style="margin-top:4px">';
+    html+='<button type="button" class="act" data-cmd="range">TABELA DE RANGES</button>';
+    if(canFlop) html+='<button type="button" class="act info" data-cmd="flop">VER O FLOP \u2192</button>';
+    html+='<button type="button" class="act gold" data-cmd="next">PR\u00d3XIMA M\u00c3O</button></div>';
+    c.innerHTML=html;
+  }
+}
+
+function renderStats(){
+  const n=history.length, hits=history.filter(h=>h.correct).length;
+  const lost=history.reduce((a,h)=>a+h.evLoss,0);
+  $("stHands").textContent=n;
+  $("stAcc").textContent=(n?Math.round(hits/n*100):0)+"%";
+  $("stLost").textContent=lost.toFixed(2)+"bb";
+  $("stAvg").textContent=(n?(lost/n).toFixed(2):"0.00")+"bb";
+  const tm=n?history.reduce((a,h)=>a+(h.time||0),0)/n/1000:0;
+  $("stTime").textContent=tm.toFixed(1)+"s";
+  if(n<2){ $("trackBlock").className="hidden"; return; }
+  $("trackBlock").className="";
+  let acc=0; const cum=history.map(h=>(acc+=h.evLoss));
+  const max=Math.max.apply(null,cum.concat([0.5]));
+  const pts=cum.map((v,i)=>(i/(cum.length-1))*100+","+(30-(v/max)*26)).join(" ");
+  $("track").innerHTML='<line x1="0" y1="30" x2="100" y2="30" stroke="var(--edge)" stroke-width="0.5"/>'+
+    '<polyline points="'+pts+'" fill="none" stroke="var(--red)" stroke-width="1" vector-effect="non-scaling-stroke"/>';
+}
+
+/* ==========================================================
+   6b. TABELA DE RANGES 13x13
+   Reavalia os 169 combos no MESMO nó da mão jogada, com os
+   mesmos limiares (posição, stack, vilão e ICM aplicados).
+   ========================================================== */
+const ACTION_COLOR={
+  fold:"#2B3633", check:"#3F6E8C", call:"#2E7D50",
+  raise:"#C4503F", bet:"#C4503F", allin:"#8A5AA8"
+};
+const ACTION_NAME={fold:"Fold",check:"Check",call:"Call / Limp",raise:"Raise / 3-Bet / 4-Bet",
+                   bet:"Aposta",allin:"All-in"};
+const ORDER=["A","K","Q","J","T","9","8","7","6","5","4","3","2"];
+
+/* Escolhe cartas representativas evitando choque com o board */
+function comboCards(hi,lo,type,board){
+  const used={};
+  board.forEach(c=>{ used[c]=1; });
+  const free=r=>SUITS.filter(s=>!used[r+s]);
+  if(type==="p"){
+    const f=free(hi); return [hi+(f[0]||"s"), hi+(f[1]||"h")];
+  }
+  if(type==="s"){
+    const shared=SUITS.filter(s=>!used[hi+s] && !used[lo+s]);
+    const s=shared[0]||"s"; return [hi+s, lo+s];
+  }
+  const fh=free(hi), fl=free(lo);
+  const a=fh[0]||"s";
+  const b=(fl.filter(x=>x!==a)[0])||(a==="s"?"h":"s");
+  return [hi+a, lo+b];
+}
+
+function buildRangeGrid(){
+  const cells=[], tally={};
+  let totalCombos=0;
+  const heroKey=handLabel(hand.hole[0],hand.hole[1]);
+
+  for(let i=0;i<13;i++){
+    for(let j=0;j<13;j++){
+      const r1=ORDER[i], r2=ORDER[j];
+      let type, label, weight, hi, lo;
+      if(i===j){ type="p"; hi=r1; lo=r1; label=r1+r1; weight=6; }
+      else if(i<j){ type="s"; hi=r1; lo=r2; label=r1+r2+"s"; weight=4; }
+      else { type="o"; hi=r2; lo=r1; label=r2+r1+"o"; weight=12; }
+
+      const cards=comboCards(hi,lo,type,hand.board);
+      const probe={...hand, hole:cards};
+      const n = hand.street==="preflop" ? buildPreflopNode(probe) : buildFlopNode(probe);
+      const g = solveNode(n);
+
+      cells.push({label,freq:g.freq,weight,hero:label===heroKey,row:i,col:j});
+      totalCombos+=weight;
+      g.freq.forEach(f=>{ tally[f.id]=(tally[f.id]||0)+weight*(f.pct/100); });
+    }
+  }
+  return {cells,tally,totalCombos};
+}
+
+function cellBackground(freq){
+  if(freq.length===1) return ACTION_COLOR[freq[0].id]||"#2B3633";
+  const a=ACTION_COLOR[freq[0].id]||"#2B3633", b=ACTION_COLOR[freq[1].id]||"#2B3633";
+  const p=freq[0].pct;
+  return "linear-gradient(105deg,"+a+" 0 "+p+"%,"+b+" "+p+"% 100%)";
+}
+
+function openRanges(){
+  const {cells,tally,totalCombos}=buildRangeGrid();
+  const present=Object.keys(tally).sort((a,b)=>tally[b]-tally[a]);
+
+  let grid='<div class="rangewrap"><div class="rangegrid">';
+  cells.forEach(c=>{
+    grid+='<div class="rc'+(c.hero?" hero":"")+'" title="'+c.label+' \u2014 '+
+          c.freq.map(f=>f.label+" "+f.pct+"%").join(" / ")+'" style="background:'+
+          cellBackground(c.freq)+'"><span>'+c.label+'</span></div>';
+  });
+  grid+='</div></div>';
+
+  let legend='<div class="legend">';
+  present.forEach(id=>{
+    legend+='<span class="lg"><i style="background:'+(ACTION_COLOR[id]||"#2B3633")+'"></i>'+
+            (ACTION_NAME[id]||id)+'</span>';
+  });
+  legend+='<span class="lg"><i style="background:linear-gradient(105deg,#C4503F 0 55%,#2B3633 55% 100%)"></i>Estrat\u00e9gia mista</span>';
+  legend+='<span class="lg"><i style="background:transparent;outline:2px solid var(--gold);outline-offset:-1px"></i>Sua m\u00e3o</span>';
+  legend+='</div>';
+
+  let sum='<div class="rsum">';
+  present.filter(id=>id!=="fold").forEach(id=>{
+    const pct=(tally[id]/totalCombos*100);
+    sum+='<div><div class="k">'+(ACTION_NAME[id]||id).toUpperCase()+'</div><div class="v" style="color:'+
+         (ACTION_COLOR[id]||"var(--cream)")+'">'+pct.toFixed(1)+'%</div></div>';
+  });
+  const cont=100-((tally.fold||0)/totalCombos*100);
+  sum+='<div><div class="k">RANGE TOTAL DE CONTINUA\u00c7\u00c3O</div><div class="v" style="color:var(--gold)">'+
+       cont.toFixed(1)+'%</div></div></div>';
+
+  const ctx = hand.street==="preflop"
+    ? hand.position+" \u00b7 "+hand.stack+"bb \u00b7 "+
+      (hand.facing==="none"?"mesa aberta":hand.facing==="raise"?"contra raise":"contra 3-bet")+
+      " \u00b7 vs "+VILLAINS[cfg.villain].name+(cfg.mode==="icm"?" \u00b7 ICM "+PHASES[cfg.phase].name:" \u00b7 ChipEV")
+    : "Flop "+hand.board.join(" ")+" \u00b7 pote "+hand.pot.toFixed(1)+"bb \u00b7 vs "+VILLAINS[cfg.villain].name;
+
+  const hint = hand.street==="preflop"
+    ? "A c\u00e9lula mais \u00e0 direita e mais abaixo de cada cor marca o limite do range naquele n\u00f3. Suited acima da diagonal, offsuit abaixo. Passe o mouse para ver as frequ\u00eancias."
+    : "Grade calculada para este flop espec\u00edfico. Combos que colidem com cartas do board usam naipes alternativos e s\u00e3o aproxima\u00e7\u00f5es.";
+
+  $("rangeModal").innerHTML=
+    '<button class="close" id="rangeClose">FECHAR \u00d7</button>'+
+    '<h2>Range recomendado</h2><div class="ctx">'+ctx+'</div>'+
+    grid+legend+sum+'<p class="rhint">'+hint+'</p>';
+  $("rangeOverlay").className="overlay";
+  $("rangeClose").addEventListener("click",closeRanges,false);
+}
+function closeRanges(){ $("rangeOverlay").className="overlay hidden"; }
+$("rangeOverlay").addEventListener("click",e=>{ if(e.target.id==="rangeOverlay") closeRanges(); },false);
+
+/* ==========================================================
+   7. CRONÔMETRO
+   Conta para cima. A referência de 20s vira só uma marca visual:
+   o anel completa uma volta aos 20s e segue contando em vermelho.
+   Base em Date.now() para não perder tempo quando o iOS estrangula
+   os intervals com o app em segundo plano.
+   ========================================================== */
+const CIRC=2*Math.PI*30, BENCH=20000;
+
+function fmtClock(ms){
+  const t=ms/1000;
+  if(t<60) return t.toFixed(1);
+  const m=Math.floor(t/60);
+  return m+":"+String(Math.floor(t%60)).padStart(2,"0");
+}
+
+function paintRing(){
+  const ratio=Math.min(elapsed/BENCH,1);
+  const over=elapsed>BENCH;
+  const col = over ? "var(--red)" : elapsed>BENCH*0.75 ? "#D98441" : "var(--gold)";
+  const arc=$("ringArc");
+  arc.style.strokeDashoffset=CIRC*(1-ratio);
+  arc.setAttribute("stroke",col);
+  const n=$("ringNum");
+  n.textContent=fmtClock(elapsed);
+  n.style.color=col;
+  n.style.fontSize = elapsed>=60000 ? "15px" : "17px";
+}
+
+function startTimer(){
+  clearInterval(timer);
+  startedAt=Date.now()-elapsed;
+  $("ring").style.visibility="visible";
+  paintRing();
+  timer=setInterval(()=>{
+    elapsed=Date.now()-startedAt;
+    paintRing();
+  },100);
+}
+
+function stopTimer(){
+  if(startedAt) elapsed=Date.now()-startedAt;
+  clearInterval(timer);
+}
+
+function resetTimer(){ elapsed=0; startedAt=0; }
+
+/* ==========================================================
+   8. AÇÕES
+   ========================================================== */
+function act(id,size){
+  if(result) return;
+  stopTimer();
+  $("ring").style.visibility="hidden";
+  const chosen=gto.byId[id];
+  const rawLoss=Math.max(0, gto.best.ev-(chosen?chosen.ev:0));
+  let sizePenalty=0;
+  if(chosen && chosen.sizes && size!=null && chosen.best!=null && id===gto.best.id){
+    const off=Math.abs(size-chosen.best)/chosen.best;
+    if(off>0.15) sizePenalty=Math.min(0.40, off*0.45);
+  }
+  const evLoss=Math.round((rawLoss+sizePenalty)*100)/100;
+  const correct = gto.freq.some(f=>f.id===id) && sizePenalty===0;
+  result={chosenId:id,chosenLabel:(chosen?chosen.label:id),time:elapsed,
+          size:(chosen&&chosen.sizes)?size:null,evLoss,correct,sizePenalty,
+          bestSize:chosen?chosen.best:null};
+  history.push({evLoss,correct,time:elapsed});
+  renderControls(); renderStats();
+}
+
+let filtersDirty=false;
+
+/* Marca que um filtro de estrutura mudou. Se o painel estiver
+   recolhido (desktop, ou mobile aberto), reflete na hora; se estiver
+   expandido no mobile, espera o fechamento para aplicar de uma vez. */
+function markPending(){
+  const chk=$("ftChk");
+  const collapsible = window.matchMedia("(max-width:900px)").matches;
+  if(collapsible && chk && chk.checked){
+    filtersDirty=true;
+    showPending(true);
+  } else {
+    filtersDirty=false;
+    newHand();
+  }
+}
+
+function showPending(on){
+  const lbl=document.querySelector(".ftoggle");
+  if(lbl) lbl.classList.toggle("pending",on);
+}
+
+function applyPending(){
+  if(filtersDirty){
+    filtersDirty=false;
+    showPending(false);
+    newHand();
+  }
+}
+
+function newHand(){ result=null; resetTimer(); hand=dealHand(); renderAll(); }
+
+function goFlop(){
+  const d=hand.deck;
+  hand.board=[d.pop(),d.pop(),d.pop()];
+  hand.street="flop";
+  hand.pot=hand.pot+hand.toCall*2;
+  hand.toCall=0; hand.facing="none";
+  hand.story="Vil\u00e3o deu check. Voc\u00ea age no flop.";
+  result=null; resetTimer(); renderAll();
+}
+
+/* Delegação global: um único listener sobrevive a qualquer re-render */
+document.addEventListener("click",function(e){
+  const b=e.target.closest ? e.target.closest("button") : null;
+  if(!b) return;
+
+  if(b.dataset.cmd==="range"){ openRanges(); return; }
+  if(b.dataset.cmd==="flop"){ goFlop(); return; }
+  if(b.dataset.cmd==="next"){ newHand(); return; }
+
+  if(b.dataset.act!=null){
+    const a=gto.byId[b.dataset.act];
+    if(!a) return;
+    if(b.dataset.size!=null) act(b.dataset.act,Number(b.dataset.size));
+    else act(b.dataset.act,null);
+  }
+},false);
+
+$("btnReset").addEventListener("click",()=>{ history.length=0; filtersDirty=false; showPending(false); newHand(); },false);
+
+/* Fechar o painel pelo próprio botão aplica o que estava pendente */
+$("ftChk").addEventListener("change",e=>{ if(!e.target.checked) applyPending(); },false);
+
+/* Tocar/clicar fora do painel, com ele aberto, fecha e aplica */
+document.addEventListener("pointerdown",e=>{
+  const chk=$("ftChk");
+  if(!chk || !chk.checked) return;
+  if(!window.matchMedia("(max-width:900px)").matches) return;
+  const aside=$("sidebar");
+  if(aside && !aside.contains(e.target)){
+    chk.checked=false;
+    applyPending();
+  }
+},false);
+
+
+
+/* ==========================================================
+   9. BOOT
+   ========================================================== */
+function renderAll(){
+  try{ renderAllInner(); }
+  catch(err){
+    $("controls").innerHTML='<div class="explain" style="color:var(--red)"><b>Erro ao montar a m\u00e3o.</b> '+
+      (err&&err.message?err.message:err)+'</div>'+
+      '<button type="button" class="act gold" data-cmd="next">TENTAR OUTRA M\u00c3O</button>';
+  }
+}
+function renderAllInner(){
+  node = hand.street==="preflop" ? buildPreflopNode(hand) : buildFlopNode(hand);
+  gto = solveNode(node);
+  renderSidebar(); renderTable(); renderControls(); renderStats();
+  if(!result) startTimer(); else $("ring").style.visibility="hidden";
+}
+
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden) stopTimer();
+  else if(!result) startTimer();
+});
+
+document.addEventListener("keydown",e=>{
+  const modalOpen = $("rangeOverlay").className.indexOf("hidden")<0;
+  if(e.key==="Escape"){ closeRanges(); return; }
+  if(modalOpen) return;
+  if(result && e.key.toLowerCase()==="r"){ openRanges(); return; }
+  if(result && (e.key===" "||e.key==="Enter")){e.preventDefault();newHand();return;}
+  if(!result){
+    const map={f:"fold",c:"call",k:"check",a:"allin"};
+    const id=map[e.key.toLowerCase()];
+    if(id && gto.byId[id]) act(id,null);
+  }
+});
+
+renderAll();
+</script>
+</body>
+</html>
