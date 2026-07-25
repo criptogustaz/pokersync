@@ -1,0 +1,1174 @@
+{
+  "schema_version": "2.0",
+  "generated_at": "2026-07-25",
+  "count": 22,
+  "scope": "Somente nós decididos por equity × pot odds: river com board fechado e all-in no turn. Flop, escolha de sizing e frequências mistas exigem solver e não estão aqui.",
+  "drills": [
+    {
+      "id": "srp-01",
+      "hero_hand": "Ad Qc",
+      "board": "Qs 7h 3d 5c 4s",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 28.5,
+      "bet_bbs": 28.5,
+      "bet_pct_pot": 100,
+      "stack_bbs": 86,
+      "spr": 3.02,
+      "pot_type": "SRP",
+      "board_texture": "conectado, qualquer 6 fecha sequência",
+      "scenario_note": "Top pair enfrentando lead do BB num board cheio de sequências.",
+      "villain_range": {
+        "notation_value": "66,76s,65s,77,33,55,44,75s,54s,43s,86s",
+        "notation_worse": "98s,T9s,J9s,QJo,QTo",
+        "total_combos": 58
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 41.38,
+        "pot_odds_needed_pct": 33.33,
+        "margin_pp": 8.05,
+        "ev_call_bbs": 6.88,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 24,
+        "combos_beating_hero": 34,
+        "combos_tie": 0
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 28.5,
+          "correct": true,
+          "ev_bbs": 6.88
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": false,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "call",
+      "explanation": "Pagar 28.5bb disputa um pote de 85.5bb, então você precisa ter a melhor mão 33.3% das vezes. Contra a range assumida você tem 41.4% — 8.0 pontos de folga. É como um investimento em que o preço cobrado é menor que a chance real de dar certo: perder algumas vezes é normal, o lucro aparece na repetição.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "srp-02",
+      "hero_hand": "Kh Jd",
+      "board": "Jc 9s 4h 2d 7c",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 24,
+      "bet_bbs": 36,
+      "bet_pct_pot": 150,
+      "stack_bbs": 78,
+      "spr": 3.25,
+      "pot_type": "SRP",
+      "board_texture": "seco, cartas médias",
+      "scenario_note": "Top pair com kicker médio contra aposta no river.",
+      "villain_range": {
+        "notation_value": "99,44,22,77,J9s,J7s,97s,AJs,AJo,QJs",
+        "notation_worse": "T8s,86s,KQo,QTs,KTs",
+        "total_combos": 51
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 43.14,
+        "pot_odds_needed_pct": 37.5,
+        "margin_pp": 5.64,
+        "ev_call_bbs": 5.41,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 22,
+        "combos_beating_hero": 29,
+        "combos_tie": 0
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 36,
+          "correct": true,
+          "ev_bbs": 5.41
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": false,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "call",
+      "explanation": "Pagar 36bb disputa um pote de 96.0bb, então você precisa ter a melhor mão 37.5% das vezes. Contra a range assumida você tem 43.1% — 5.6 pontos de folga. É como um investimento em que o preço cobrado é menor que a chance real de dar certo: perder algumas vezes é normal, o lucro aparece na repetição.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "srp-05",
+      "hero_hand": "Tc Td",
+      "board": "9h 6s 2c Jd 4h",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 25,
+      "bet_bbs": 18.8,
+      "bet_pct_pot": 75,
+      "stack_bbs": 88,
+      "spr": 3.52,
+      "pot_type": "SRP",
+      "board_texture": "valete chegou no river",
+      "scenario_note": "Overpair virou par intermediário quando o valete chegou.",
+      "villain_range": {
+        "notation_value": "JJ,J9s,J6s,J4s,QJo,KJo,AJo,99,66,44,QQ,KK",
+        "notation_worse": "QTs,KQo,87s,T8s,53s",
+        "total_combos": 81
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 24.69,
+        "pot_odds_needed_pct": 30.03,
+        "margin_pp": -5.34,
+        "ev_call_bbs": -3.34,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 20,
+        "combos_beating_hero": 61,
+        "combos_tie": 0
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 18.8,
+          "correct": false,
+          "ev_bbs": -3.34
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": true,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "fold",
+      "explanation": "Pagar 18.8bb disputa 62.6bb, o que exige ganhar 30.0% das vezes. Você tem 24.7% — faltam 5.3 pontos. Parece pouco em uma mão, mas é um vazamento que se repete: cem vezes assim e o prejuízo é certo. Aqui, guardar as fichas é o lucro.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "srp-06",
+      "hero_hand": "Ac 5c",
+      "board": "Kd 8c 5h 3s 8s",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 29,
+      "bet_bbs": 29,
+      "bet_pct_pot": 100,
+      "stack_bbs": 74,
+      "spr": 2.55,
+      "pot_type": "SRP",
+      "board_texture": "pareou no river",
+      "scenario_note": "Par baixo com kicker de ás em board que pareou.",
+      "villain_range": {
+        "notation_value": "88,KK,K8s,85s,83s,K5s,K3s,KQo,KJo,KTs,K9s",
+        "notation_worse": "55,33,QJs,JTs,T9s,97s",
+        "total_combos": 55
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 29.09,
+        "pot_odds_needed_pct": 33.33,
+        "margin_pp": -4.24,
+        "ev_call_bbs": -3.69,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 16,
+        "combos_beating_hero": 39,
+        "combos_tie": 0
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 29,
+          "correct": false,
+          "ev_bbs": -3.69
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": true,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "fold",
+      "explanation": "Pagar 29bb disputa 87.0bb, o que exige ganhar 33.3% das vezes. Você tem 29.1% — faltam 4.2 pontos. Parece pouco em uma mão, mas é um vazamento que se repete: cem vezes assim e o prejuízo é certo. Aqui, guardar as fichas é o lucro.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "srp-07",
+      "hero_hand": "9h 8h",
+      "board": "Jd 6h 4c 9h 2h",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 27,
+      "bet_bbs": 54,
+      "bet_pct_pot": 200,
+      "stack_bbs": 95,
+      "spr": 3.52,
+      "pot_type": "SRP",
+      "board_texture": "flush de copas completou",
+      "scenario_note": "Flush baixinho contra board de flush.",
+      "villain_range": {
+        "notation_value": "AhKh,AhQh,Ah3h,Kh8h,Qh7h,7h5h,Th7h,Jh3h",
+        "notation_worse": "66,44,22,99,J9s,J6s,96s,QJo",
+        "total_combos": 35
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 82.86,
+        "pot_odds_needed_pct": 40,
+        "margin_pp": 42.86,
+        "ev_call_bbs": 57.86,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 29,
+        "combos_beating_hero": 6,
+        "combos_tie": 0
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 54,
+          "correct": true,
+          "ev_bbs": 57.86
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": false,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "call",
+      "explanation": "Pagar 54bb disputa um pote de 135.0bb, então você precisa ter a melhor mão 40.0% das vezes. Contra a range assumida você tem 82.9% — 42.9 pontos de folga. É como um investimento em que o preço cobrado é menor que a chance real de dar certo: perder algumas vezes é normal, o lucro aparece na repetição.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "srp-08",
+      "hero_hand": "8h 8s",
+      "board": "Qc 7d 3c Ts 5h",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 23,
+      "bet_bbs": 23,
+      "bet_pct_pot": 100,
+      "stack_bbs": 68,
+      "spr": 2.96,
+      "pot_type": "SRP",
+      "board_texture": "três cartas altas espalhadas",
+      "scenario_note": "Underpair contra aposta no river.",
+      "villain_range": {
+        "notation_value": "QQ,TT,77,33,55,QTs,Q7s,Q3s,T7s,AQo,KQo,QJs",
+        "notation_worse": "66,44,22,J9s,98s,76s,65s",
+        "total_combos": 75
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 40,
+        "pot_odds_needed_pct": 33.33,
+        "margin_pp": 6.67,
+        "ev_call_bbs": 4.6,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 30,
+        "combos_beating_hero": 45,
+        "combos_tie": 0
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 23,
+          "correct": true,
+          "ev_bbs": 4.6
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": false,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "call",
+      "explanation": "Pagar 23bb disputa um pote de 69.0bb, então você precisa ter a melhor mão 33.3% das vezes. Contra a range assumida você tem 40.0% — 6.7 pontos de folga. É como um investimento em que o preço cobrado é menor que a chance real de dar certo: perder algumas vezes é normal, o lucro aparece na repetição.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "srp-09",
+      "hero_hand": "Ks Qd",
+      "board": "Qh 8d 6s 3h Ac",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 21,
+      "bet_bbs": 10.5,
+      "bet_pct_pot": 50,
+      "stack_bbs": 60,
+      "spr": 2.86,
+      "pot_type": "SRP",
+      "board_texture": "ás no river",
+      "scenario_note": "Top pair virou segundo par quando o ás chegou.",
+      "villain_range": {
+        "notation_value": "AQs,AA,A8s,A6s,A3s,AJo,ATo,A9s,A5s,A4s,A7s,A2s",
+        "notation_worse": "88,66,33,86s,KJs,JTs,T9s",
+        "total_combos": 65
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 16.92,
+        "pot_odds_needed_pct": 25,
+        "margin_pp": -8.08,
+        "ev_call_bbs": -3.39,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 11,
+        "combos_beating_hero": 54,
+        "combos_tie": 0
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 10.5,
+          "correct": false,
+          "ev_bbs": -3.39
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": true,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "fold",
+      "explanation": "Pagar 10.5bb disputa 42.0bb, o que exige ganhar 25.0% das vezes. Você tem 16.9% — faltam 8.1 pontos. Parece pouco em uma mão, mas é um vazamento que se repete: cem vezes assim e o prejuízo é certo. Aqui, guardar as fichas é o lucro.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "srp-10",
+      "hero_hand": "Jc Jh",
+      "board": "9s 5d 2h Kc Kd",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 30,
+      "bet_bbs": 22.5,
+      "bet_pct_pot": 75,
+      "stack_bbs": 82,
+      "spr": 2.73,
+      "pot_type": "SRP",
+      "board_texture": "duplamente pareado",
+      "scenario_note": "Overpair inferior aos reis do board.",
+      "villain_range": {
+        "notation_value": "KK,K9s,K5s,K2s,KQo,KJo,KTo,K8s,K7s,K6s,K4s,99",
+        "notation_worse": "55,22,QJs,JTs,T8s,76s",
+        "total_combos": 49
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 24.49,
+        "pot_odds_needed_pct": 30,
+        "margin_pp": -5.51,
+        "ev_call_bbs": -4.13,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 12,
+        "combos_beating_hero": 37,
+        "combos_tie": 0
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 22.5,
+          "correct": false,
+          "ev_bbs": -4.13
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": true,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "fold",
+      "explanation": "Pagar 22.5bb disputa 75.0bb, o que exige ganhar 30.0% das vezes. Você tem 24.5% — faltam 5.5 pontos. Parece pouco em uma mão, mas é um vazamento que se repete: cem vezes assim e o prejuízo é certo. Aqui, guardar as fichas é o lucro.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "3bp-01",
+      "hero_hand": "Ac Td",
+      "board": "Ah 9c 4s 8d 2h",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 44,
+      "bet_bbs": 22,
+      "bet_pct_pot": 50,
+      "stack_bbs": 52,
+      "spr": 1.18,
+      "pot_type": "3BET",
+      "board_texture": "ás alto, seco",
+      "scenario_note": "Top pair com kicker médio em pote de 3-bet.",
+      "villain_range": {
+        "notation_value": "AA,A9s,A4s,A8s,A2s,AKs,AKo,AQs,AQo,AJs,AJo",
+        "notation_worse": "99,44,88,22,KQs,QJs,JTs",
+        "total_combos": 54
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 20.37,
+        "pot_odds_needed_pct": 25,
+        "margin_pp": -4.63,
+        "ev_call_bbs": -4.07,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 11,
+        "combos_beating_hero": 43,
+        "combos_tie": 0
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 22,
+          "correct": false,
+          "ev_bbs": -4.07
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": true,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "fold",
+      "explanation": "Pagar 22bb disputa 88.0bb, o que exige ganhar 25.0% das vezes. Você tem 20.4% — faltam 4.6 pontos. Parece pouco em uma mão, mas é um vazamento que se repete: cem vezes assim e o prejuízo é certo. Aqui, guardar as fichas é o lucro.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "3bp-02",
+      "hero_hand": "Qs Qh",
+      "board": "Kd Qc 6s 3d 9h",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 48,
+      "bet_bbs": 96,
+      "bet_pct_pot": 200,
+      "stack_bbs": 60,
+      "spr": 1.25,
+      "pot_type": "3BET",
+      "board_texture": "rei alto",
+      "scenario_note": "Set de damas em pote de 3-bet.",
+      "villain_range": {
+        "notation_value": "KK,KQs,K9s,K6s,K3s,AKs,AKo,KJs,KTs",
+        "notation_worse": "66,33,99,AQs,AQo,AJs,JTs,T8s",
+        "total_combos": 53
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 86.79,
+        "pot_odds_needed_pct": 40,
+        "margin_pp": 46.79,
+        "ev_call_bbs": 112.3,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 46,
+        "combos_beating_hero": 7,
+        "combos_tie": 0
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 96,
+          "correct": true,
+          "ev_bbs": 112.3
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": false,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "call",
+      "explanation": "Pagar 96bb disputa um pote de 240.0bb, então você precisa ter a melhor mão 40.0% das vezes. Contra a range assumida você tem 86.8% — 46.8 pontos de folga. É como um investimento em que o preço cobrado é menor que a chance real de dar certo: perder algumas vezes é normal, o lucro aparece na repetição.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "3bp-03",
+      "hero_hand": "Ah Jd",
+      "board": "As Qd 7h 4c Jd",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 42,
+      "bet_bbs": 84,
+      "bet_pct_pot": 200,
+      "stack_bbs": 84,
+      "spr": 2,
+      "pot_type": "3BET",
+      "board_texture": "duas cartas altas",
+      "scenario_note": "Dois pares contra aposta grande em pote de 3-bet.",
+      "villain_range": {
+        "notation_value": "AA,QQ,JJ,AQs,AQo,A7s,A4s,AJs,Q7s,77,44",
+        "notation_worse": "KQs,KJs,T9s,98s,KTs",
+        "total_combos": 43
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 45.35,
+        "pot_odds_needed_pct": 40,
+        "margin_pp": 5.35,
+        "ev_call_bbs": 11.23,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 19,
+        "combos_beating_hero": 23,
+        "combos_tie": 1
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 84,
+          "correct": true,
+          "ev_bbs": 11.23
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": false,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "call",
+      "explanation": "Pagar 84bb disputa um pote de 210.0bb, então você precisa ter a melhor mão 40.0% das vezes. Contra a range assumida você tem 45.3% — 5.3 pontos de folga. É como um investimento em que o preço cobrado é menor que a chance real de dar certo: perder algumas vezes é normal, o lucro aparece na repetição.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "3bp-04",
+      "hero_hand": "Kh Th",
+      "board": "Kh Jh 5c 2d 8h",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 46,
+      "bet_bbs": 92,
+      "bet_pct_pot": 200,
+      "stack_bbs": 58,
+      "spr": 1.26,
+      "pot_type": "3BET",
+      "board_texture": "flush de copas completou",
+      "scenario_note": "Flush médio contra aposta em board de flush.",
+      "villain_range": {
+        "notation_value": "AhQh,AhTh,Ah9h,Qh9h,Ah7h,Ah6h,Ah4h,Ah3h,KK,JJ",
+        "notation_worse": "55,22,88,KJs,K8s,J8s,AKo",
+        "total_combos": 40
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 82.5,
+        "pot_odds_needed_pct": 40,
+        "margin_pp": 42.5,
+        "ev_call_bbs": 97.75,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 33,
+        "combos_beating_hero": 7,
+        "combos_tie": 0
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 92,
+          "correct": true,
+          "ev_bbs": 97.75
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": false,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "call",
+      "explanation": "Pagar 92bb disputa um pote de 230.0bb, então você precisa ter a melhor mão 40.0% das vezes. Contra a range assumida você tem 82.5% — 42.5 pontos de folga. É como um investimento em que o preço cobrado é menor que a chance real de dar certo: perder algumas vezes é normal, o lucro aparece na repetição.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "3bp-05",
+      "hero_hand": "Kc Kh",
+      "board": "Ad 7s 4h 9c 9d",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 40,
+      "bet_bbs": 30,
+      "bet_pct_pot": 75,
+      "stack_bbs": 66,
+      "spr": 1.65,
+      "pot_type": "3BET",
+      "board_texture": "ás alto, noves pareados",
+      "scenario_note": "Overpair abaixo do ás, board pareou.",
+      "villain_range": {
+        "notation_value": "AA,99,A9s,A7s,A4s,AKs,AKo,AQs,AQo,AJs,ATs",
+        "notation_worse": "77,44,KQs,QJs,JTs,QTs",
+        "total_combos": 54
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 25.93,
+        "pot_odds_needed_pct": 30,
+        "margin_pp": -4.07,
+        "ev_call_bbs": -4.07,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 14,
+        "combos_beating_hero": 40,
+        "combos_tie": 0
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 30,
+          "correct": false,
+          "ev_bbs": -4.07
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": true,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "fold",
+      "explanation": "Pagar 30bb disputa 100.0bb, o que exige ganhar 30.0% das vezes. Você tem 25.9% — faltam 4.1 pontos. Parece pouco em uma mão, mas é um vazamento que se repete: cem vezes assim e o prejuízo é certo. Aqui, guardar as fichas é o lucro.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "3bp-06",
+      "hero_hand": "Ts Th",
+      "board": "9s 8d 3c Tc 2s",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 44,
+      "bet_bbs": 88,
+      "bet_pct_pot": 200,
+      "stack_bbs": 54,
+      "spr": 1.23,
+      "pot_type": "3BET",
+      "board_texture": "conectado médio",
+      "scenario_note": "Set de dez em pote de 3-bet.",
+      "villain_range": {
+        "notation_value": "QJs,76s,65s,JJ,QQ,KK,AA,J7s,54s",
+        "notation_worse": "99,88,33,22,98s,93s,83s,JTs,J9s",
+        "total_combos": 66
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 81.82,
+        "pot_odds_needed_pct": 40,
+        "margin_pp": 41.82,
+        "ev_call_bbs": 92,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 54,
+        "combos_beating_hero": 12,
+        "combos_tie": 0
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 88,
+          "correct": true,
+          "ev_bbs": 92
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": false,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "call",
+      "explanation": "Pagar 88bb disputa um pote de 220.0bb, então você precisa ter a melhor mão 40.0% das vezes. Contra a range assumida você tem 81.8% — 41.8 pontos de folga. É como um investimento em que o preço cobrado é menor que a chance real de dar certo: perder algumas vezes é normal, o lucro aparece na repetição.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "3bp-07",
+      "hero_hand": "As Jd",
+      "board": "Js 9d 6c 6h Ks",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 45,
+      "bet_bbs": 45,
+      "bet_pct_pot": 100,
+      "stack_bbs": 90,
+      "spr": 2,
+      "pot_type": "3BET",
+      "board_texture": "seis pareados, rei no river",
+      "scenario_note": "Top pair virou segundo par e o board pareou.",
+      "villain_range": {
+        "notation_value": "KK,66,KJs,K9s,K6s,J6s,96s,AKs,AKo,KQs,KQo,KTs",
+        "notation_worse": "JJ,99,AQs,AQo,QTs,QJs,JTs",
+        "total_combos": 58
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 27.59,
+        "pot_odds_needed_pct": 33.33,
+        "margin_pp": -5.75,
+        "ev_call_bbs": -7.76,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 16,
+        "combos_beating_hero": 42,
+        "combos_tie": 0
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 45,
+          "correct": false,
+          "ev_bbs": -7.76
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": true,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "fold",
+      "explanation": "Pagar 45bb disputa 135.0bb, o que exige ganhar 33.3% das vezes. Você tem 27.6% — faltam 5.7 pontos. Parece pouco em uma mão, mas é um vazamento que se repete: cem vezes assim e o prejuízo é certo. Aqui, guardar as fichas é o lucro.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "3bp-09",
+      "hero_hand": "Kh Qd",
+      "board": "Qh Jc 4s 4d 7h",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 43,
+      "bet_bbs": 86,
+      "bet_pct_pot": 200,
+      "stack_bbs": 70,
+      "spr": 1.63,
+      "pot_type": "3BET",
+      "board_texture": "quatros pareados",
+      "scenario_note": "Top pair com board pareado.",
+      "villain_range": {
+        "notation_value": "QQ,JJ,44,QJs,Q7s,J7s,AQs,AQo,AJs,AJo,J4s,Q4s",
+        "notation_worse": "77,KJs,T9s,98s,ATs,A5s",
+        "total_combos": 53
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 60.38,
+        "pot_odds_needed_pct": 40,
+        "margin_pp": 20.38,
+        "ev_call_bbs": 43.81,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 32,
+        "combos_beating_hero": 21,
+        "combos_tie": 0
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 86,
+          "correct": true,
+          "ev_bbs": 43.81
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": false,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "call",
+      "explanation": "Pagar 86bb disputa um pote de 215.0bb, então você precisa ter a melhor mão 40.0% das vezes. Contra a range assumida você tem 60.4% — 20.4 pontos de folga. É como um investimento em que o preço cobrado é menor que a chance real de dar certo: perder algumas vezes é normal, o lucro aparece na repetição.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "3bp-10",
+      "hero_hand": "Ah 9h",
+      "board": "Kc 9s 5d 2c 5h",
+      "street": "river",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 47,
+      "bet_bbs": 47,
+      "bet_pct_pot": 100,
+      "stack_bbs": 56,
+      "spr": 1.19,
+      "pot_type": "3BET",
+      "board_texture": "cinco pareou no river",
+      "scenario_note": "Segundo par com kicker de ás e board pareado.",
+      "villain_range": {
+        "notation_value": "KK,55,K5s,95s,K9s,K2s,52s,AKs,AKo,KQs,KJs",
+        "notation_worse": "22,AQs,AJs,QJs,JTs,T9s,ATs",
+        "total_combos": 48
+      },
+      "math": {
+        "method": "enumeracao_exata_river",
+        "equity_pct": 39.58,
+        "pot_odds_needed_pct": 33.33,
+        "margin_pp": 6.25,
+        "ev_call_bbs": 8.81,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": 19,
+        "combos_beating_hero": 29,
+        "combos_tie": 0
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 47,
+          "correct": true,
+          "ev_bbs": 8.81
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": false,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "call",
+      "explanation": "Pagar 47bb disputa um pote de 141.0bb, então você precisa ter a melhor mão 33.3% das vezes. Contra a range assumida você tem 39.6% — 6.3 pontos de folga. É como um investimento em que o preço cobrado é menor que a chance real de dar certo: perder algumas vezes é normal, o lucro aparece na repetição.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "trn-02",
+      "hero_hand": "Jd Th",
+      "board": "9c 8s 2d Kh",
+      "street": "turn",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 26,
+      "bet_bbs": 26,
+      "bet_pct_pot": 100,
+      "stack_bbs": 26,
+      "spr": 1,
+      "pot_type": "SRP",
+      "board_texture": "sequência aberta",
+      "scenario_note": "Sequência aberta contra all-in no turn.",
+      "villain_range": {
+        "notation_value": "KK,99,88,22,K9s,K8s,K2s,98s,QQ,AKo,KQo,KJo,KTs",
+        "notation_worse": "A9s,A8s,QTs,Q9s,T9s",
+        "total_combos": 68
+      },
+      "math": {
+        "method": "enumeracao_exata_turn",
+        "equity_pct": 19.28,
+        "pot_odds_needed_pct": 33.33,
+        "margin_pp": -14.05,
+        "ev_call_bbs": -10.96,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": null,
+        "combos_beating_hero": null,
+        "combos_tie": null
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 26,
+          "correct": false,
+          "ev_bbs": -10.96
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": true,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "fold",
+      "explanation": "Pagar 26bb disputa 78.0bb, o que exige ganhar 33.3% das vezes. Você tem 19.3% — faltam 14.0 pontos. Parece pouco em uma mão, mas é um vazamento que se repete: cem vezes assim e o prejuízo é certo. Aqui, guardar as fichas é o lucro.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "trn-03",
+      "hero_hand": "Ac Qc",
+      "board": "Qd 7s 4h 2c",
+      "street": "turn",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 34,
+      "bet_bbs": 34,
+      "bet_pct_pot": 100,
+      "stack_bbs": 34,
+      "spr": 1,
+      "pot_type": "3BET",
+      "board_texture": "top pair top kicker",
+      "scenario_note": "Top pair top kicker contra all-in em pote de 3-bet.",
+      "villain_range": {
+        "notation_value": "QQ,77,44,22,Q7s,Q4s,AA,KK,AQo,Q2s,74s",
+        "notation_worse": "JJ,TT,99,88,KQs,KJs,JTs",
+        "total_combos": 63
+      },
+      "math": {
+        "method": "enumeracao_exata_turn",
+        "equity_pct": 57.61,
+        "pot_odds_needed_pct": 33.33,
+        "margin_pp": 24.28,
+        "ev_call_bbs": 24.76,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": null,
+        "combos_beating_hero": null,
+        "combos_tie": null
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 34,
+          "correct": true,
+          "ev_bbs": 24.76
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": false,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "call",
+      "explanation": "Pagar 34bb disputa um pote de 102.0bb, então você precisa ter a melhor mão 33.3% das vezes. Contra a range assumida você tem 57.6% — 24.3 pontos de folga. É como um investimento em que o preço cobrado é menor que a chance real de dar certo: perder algumas vezes é normal, o lucro aparece na repetição.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "trn-04",
+      "hero_hand": "9d 9c",
+      "board": "Ks 9h 8c 2s",
+      "street": "turn",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 28,
+      "bet_bbs": 28,
+      "bet_pct_pot": 100,
+      "stack_bbs": 28,
+      "spr": 1,
+      "pot_type": "SRP",
+      "board_texture": "set em board com rei",
+      "scenario_note": "Set de nove contra all-in no turn.",
+      "villain_range": {
+        "notation_value": "KK,K9s,K8s,K2s,KQo,KJo,AKs,AKo",
+        "notation_worse": "88,22,98s,KQs,KJs,QJs,JTs,T9s",
+        "total_combos": 60
+      },
+      "math": {
+        "method": "enumeracao_exata_turn",
+        "equity_pct": 91.63,
+        "pot_odds_needed_pct": 33.33,
+        "margin_pp": 58.3,
+        "ev_call_bbs": 48.97,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": null,
+        "combos_beating_hero": null,
+        "combos_tie": null
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 28,
+          "correct": true,
+          "ev_bbs": 48.97
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": false,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "call",
+      "explanation": "Pagar 28bb disputa um pote de 84.0bb, então você precisa ter a melhor mão 33.3% das vezes. Contra a range assumida você tem 91.6% — 58.3 pontos de folga. É como um investimento em que o preço cobrado é menor que a chance real de dar certo: perder algumas vezes é normal, o lucro aparece na repetição.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "trn-05",
+      "hero_hand": "Ad Jd",
+      "board": "Td 8d 5c Qh",
+      "street": "turn",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 32,
+      "bet_bbs": 32,
+      "bet_pct_pot": 100,
+      "stack_bbs": 32,
+      "spr": 1,
+      "pot_type": "SRP",
+      "board_texture": "flush draw com projeto de sequência",
+      "scenario_note": "Projeto duplo contra all-in no turn.",
+      "villain_range": {
+        "notation_value": "QQ,TT,88,55,QTs,Q8s,T8s,85s,JJ,99,KQo,AQo,Q5s",
+        "notation_worse": "KJs,J9s,97s,76s,65s",
+        "total_combos": 65
+      },
+      "math": {
+        "method": "enumeracao_exata_turn",
+        "equity_pct": 42.29,
+        "pot_odds_needed_pct": 33.33,
+        "margin_pp": 8.96,
+        "ev_call_bbs": 8.6,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": null,
+        "combos_beating_hero": null,
+        "combos_tie": null
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 32,
+          "correct": true,
+          "ev_bbs": 8.6
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": false,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "call",
+      "explanation": "Pagar 32bb disputa um pote de 96.0bb, então você precisa ter a melhor mão 33.3% das vezes. Contra a range assumida você tem 42.3% — 9.0 pontos de folga. É como um investimento em que o preço cobrado é menor que a chance real de dar certo: perder algumas vezes é normal, o lucro aparece na repetição.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    },
+    {
+      "id": "trn-08",
+      "hero_hand": "7h 7s",
+      "board": "Kd Qc 7d 3h",
+      "street": "turn",
+      "hero_position": "BTN",
+      "villain_position": "BB",
+      "pot_bbs": 38,
+      "bet_bbs": 38,
+      "bet_pct_pot": 100,
+      "stack_bbs": 38,
+      "spr": 1,
+      "pot_type": "3BET",
+      "board_texture": "duas cartas altas",
+      "scenario_note": "Set de sete contra all-in em pote de 3-bet.",
+      "villain_range": {
+        "notation_value": "KK,QQ,KQs,KQo,K3s,Q3s,K7s,Q7s",
+        "notation_worse": "33,AKs,AKo,AQs,AQo,JTs,AJs",
+        "total_combos": 55
+      },
+      "math": {
+        "method": "enumeracao_exata_turn",
+        "equity_pct": 84.17,
+        "pot_odds_needed_pct": 33.33,
+        "margin_pp": 50.84,
+        "ev_call_bbs": 57.96,
+        "ev_fold_bbs": 0,
+        "combos_hero_beats": null,
+        "combos_beating_hero": null,
+        "combos_tie": null
+      },
+      "options": [
+        {
+          "action": "call",
+          "amount_bbs": 38,
+          "correct": true,
+          "ev_bbs": 57.96
+        },
+        {
+          "action": "fold",
+          "amount_bbs": 0,
+          "correct": false,
+          "ev_bbs": 0
+        }
+      ],
+      "correct_action": "call",
+      "explanation": "Pagar 38bb disputa um pote de 114.0bb, então você precisa ter a melhor mão 33.3% das vezes. Contra a range assumida você tem 84.2% — 50.8 pontos de folga. É como um investimento em que o preço cobrado é menor que a chance real de dar certo: perder algumas vezes é normal, o lucro aparece na repetição.",
+      "provenance": {
+        "source": "enumeracao_exata",
+        "confidence": "exato_dada_a_range",
+        "caveat": "A equity é exata por enumeração; o avaliador de 7 cartas foi conferido contra enumeração independente em C. A range do vilão é premissa editorial: alterá-la altera a resposta. Não é saída de solver e não representa frequências GTO."
+      }
+    }
+  ]
+}
