@@ -19,14 +19,22 @@ export default function Login({ onEnter }) {
   const [show, setShow] = useState(false);
   const [hover, setHover] = useState(false);
   const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function handleEnter() {
     setErr("");
+    if (!email || !pass) {
+      setErr("Informe e-mail e senha.");
+      return;
+    }
+    setLoading(true);
     try {
-      // Em produção: await signIn(email, pass);
+      await signIn(email, pass); // valida no Supabase; lança se inválido
       onEnter();
     } catch {
       setErr("Não foi possível entrar. Verifique suas credenciais.");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -97,6 +105,7 @@ export default function Login({ onEnter }) {
 
         <button
           onClick={handleEnter}
+          disabled={loading}
           onMouseEnter={() => setHover(true)}
           onMouseLeave={() => setHover(false)}
           style={{
@@ -113,9 +122,10 @@ export default function Login({ onEnter }) {
             boxShadow: hover ? "0 8px 26px rgba(201,162,39,0.45)" : "0 4px 14px rgba(201,162,39,0.22)",
             transform: hover ? "translateY(-1px)" : "none",
             transition: "all .3s",
+            opacity: loading ? 0.7 : 1,
           }}
         >
-          Entrar
+          {loading ? "Entrando…" : "Entrar"}
         </button>
       </div>
     </div>
