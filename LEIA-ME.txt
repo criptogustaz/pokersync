@@ -1,0 +1,29 @@
+PokerSync — arquivos alterados (aplicar por cima do projeto, mantendo as pastas)
+
+APP / API (vão para o repositório e sobem no GitHub):
+  src/components/Login.jsx          -> validação real de login (correção da falha)
+  src/services/authService.js       -> auth via Supabase
+  src/services/supabaseClient.js    -> client Supabase
+  api/_middleware/requireAuth.js    -> valida token nas rotas
+  api/_db/index.js                  -> drills + results no Supabase
+  api/drills/batch.js               -> serve lote de mãos + gtoNodes
+  .env.example                      -> referência das variáveis
+  package.json                      -> dependência do supabase
+
+FERRAMENTAS DO SOLVER (ficam na raiz; NÃO precisam ir ao GitHub):
+  bridge.py                -> conversa com o TexasSolver e gera solutions.json
+  import_to_supabase.py    -> importa solutions.json para a tabela drills
+  spots.json               -> lista de situações a resolver (exemplo)
+
+COMO APLICAR:
+  1) Copie estes arquivos por cima do seu projeto, respeitando as pastas.
+  2) Suba o que é do app no GitHub:
+       git add .
+       git commit -m "Login real + integração Supabase (drills/results)"
+       git push
+     A Vercel publica sozinha.
+  3) Antes de rodar o solver, me envie um solutions.json REAL para eu ajustar
+     o parsing do bridge.py à sua versão do TexasSolver.
+
+IMPORTANTE: crie seu usuário em Supabase -> Authentication -> Users -> Add user
+(marque "Auto Confirm"). Sem isso, não há com que logar.
