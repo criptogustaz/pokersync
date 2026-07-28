@@ -1,0 +1,20 @@
+PokerSync — projeto completo
+
+RODAR O FRONT LOCALMENTE:
+  1) npm install         (recria node_modules)
+  2) npm run dev         (abre o app em localhost)
+  Configure as variáveis do Supabase em um arquivo .env (veja .env.example).
+
+FERRAMENTAS DO SOLVER (rodam separadas, no seu PC):
+  bridge.py             -> chama o TexasSolver e gera solutions.json
+  import_to_supabase.py -> importa solutions.json para a tabela drills
+  spots.json            -> lista de situações a resolver (exemplo)
+  Coloque o TexasSolver em: ./texassolver/console_solver.exe
+
+BANCO (Supabase):
+  Rode api/rls.sql no SQL Editor para criar policies de segurança.
+  Tabelas drills e drill_results conforme já criadas.
+
+preview.html -> apenas a prévia visual do design system (pode apagar).
+
+OBS: node_modules e .git não vão no zip (recriados por npm install / git).

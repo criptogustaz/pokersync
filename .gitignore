@@ -4,3 +4,12 @@ dist
 .env.local
 coverage
 .DS_Store
+
+# Artefatos locais do solver (não versionar)
+solutions.json
+output_result.json
+teste.json
+teste_input.txt
+texassolver/
+/TexasSolver/
+preview.html

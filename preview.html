@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PokerSync — Prévia do Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#111111; --panel:#1E1E1E; --text:#FFFFFF; --sub:rgba(255,255,255,.55);
+    --line:rgba(255,255,255,.12); --accent:#1F8A70; --accentSoft:#2FB89A; --accentText:#0B1512;
+    --felt:#0E3A32; --feltEdge:#12574A; --pos:#2FB89A; --neg:#E0555A;
+    --sp:#1A1A1A; --he:#D23B4E; --di:#2E7DD1; --cl:#2E9E5B;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:"Space Grotesk",system-ui,sans-serif;font-weight:600;background:var(--bg);color:var(--text);padding:32px;line-height:1.4}
+  h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--accentSoft);margin:38px 0 14px}
+  h2:first-child{margin-top:0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;transition:150ms ease}
+  .card:hover{border-color:rgba(47,184,154,.4);transform:translateY(-2px)}
+  .icon{width:42px;height:42px;border-radius:10px;display:grid;place-items:center;background:rgba(47,184,154,.12);border:1px solid rgba(47,184,154,.3);color:var(--accentSoft);margin-bottom:44px;font-size:20px}
+  .card h3{font-size:16px;margin-bottom:6px}
+  .card p{font-size:12px;color:var(--sub);font-weight:400}
+  .link{color:var(--accentSoft);font-size:12px;margin-top:12px;display:inline-block}
+  .btn{background:var(--accent);color:var(--accentText);border:0;border-radius:12px;padding:12px 20px;font-family:inherit;font-weight:600;font-size:14px;cursor:pointer;transition:150ms ease}
+  .btn:hover{background:var(--accentSoft)}
+  .btn-ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+  .hero{border-radius:16px;padding:30px;background:linear-gradient(120deg,var(--felt),var(--panel));border:1px solid var(--line);margin-bottom:8px}
+  .hero .kicker{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accentSoft)}
+  .hero h1{font-size:26px;margin-top:6px;max-width:440px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  /* mesa */
+  .table{height:230px;border-radius:180px/120px;border:10px solid #0B2620;
+    background:radial-gradient(120% 120% at 50% 40%,#12574A,#0E3A32 55%,#0B2620);
+    box-shadow:inset 0 0 60px rgba(0,0,0,.55),0 20px 60px rgba(0,0,0,.5);
+    display:grid;place-items:center;position:relative}
+  .table .ring{position:absolute;inset:34px 70px;border-radius:150px/90px;border:2px solid rgba(47,184,154,.30)}
+  /* cartas */
+  .cards{display:flex;gap:10px}
+  .pcard{width:74px;height:104px;border-radius:9px;background:linear-gradient(160deg,#FCFCF9,#ECECE4);
+    border:1px solid #D6D6CC;box-shadow:0 6px 14px rgba(0,0,0,.5);position:relative;padding:8px}
+  .pcard .rank{font-size:22px;font-weight:700;line-height:1}
+  .pcard .suit{font-size:26px;position:absolute;bottom:8px;right:8px}
+  .back{background:linear-gradient(135deg,#0E3A32,#0B2620);border:2px solid #12574A;
+    display:grid;place-items:center}
+  .back span{color:rgba(47,184,154,.35);font-size:34px}
+  /* stats */
+  .stat{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:130px}
+  .stat .lbl{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.08em}
+  .stat .val{font-size:24px;font-weight:700;margin-top:4px}
+  .pos{color:var(--pos)} .neg{color:var(--neg)}
+  /* feedback */
+  .fb{border-radius:12px;padding:16px 18px;border:1px solid;display:flex;gap:10px;align-items:center;font-size:14px}
+  .fb.perfect{background:rgba(47,184,154,.10);border-color:rgba(47,184,154,.4);color:var(--pos)}
+  .fb.blunder{background:rgba(224,85,90,.10);border-color:rgba(224,85,90,.4);color:var(--neg)}
+  .field{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;max-width:360px}
+  .field label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accentSoft)}
+  .field input{width:100%;background:transparent;border:0;outline:none;color:var(--text);font-family:inherit;font-size:15px;margin-top:6px}
+</style>
+</head>
+<body>
+
+  <h2>Dashboard — Hero + Módulos</h2>
+  <div class="hero">
+    <div class="kicker">Bem-vindo de volta</div>
+    <h1>Refine sua estratégia GTO onde ela vaza mais.</h1>
+  </div>
+  <div class="grid" style="margin-top:16px">
+    <div class="card"><div class="icon">◎</div><h3>Modo Treino</h3><p>Simulação de situações e análise de mãos em tempo real.</p><div class="link">Abrir módulo ›</div></div>
+    <div class="card"><div class="icon">📈</div><h3>Gestão de Banca</h3><p>Controle financeiro, lucros e evolução do bankroll.</p><div class="link">Abrir módulo ›</div></div>
+    <div class="card"><div class="icon">♡</div><h3>Revisão de Mãos</h3><p>Reveja spots e compare com a solução ótima.</p><div class="link">Abrir módulo ›</div></div>
+  </div>
+
+  <h2>Modo Treino — Mesa + Baralho 4 cores</h2>
+  <div class="table">
+    <div class="ring"></div>
+    <div class="cards">
+      <div class="pcard"><div class="rank" style="color:var(--sp)">A</div><div class="suit" style="color:var(--sp)">♠</div></div>
+      <div class="pcard"><div class="rank" style="color:var(--he)">K</div><div class="suit" style="color:var(--he)">♥</div></div>
+      <div class="pcard"><div class="rank" style="color:var(--di)">Q</div><div class="suit" style="color:var(--di)">♦</div></div>
+      <div class="pcard"><div class="rank" style="color:var(--cl)">J</div><div class="suit" style="color:var(--cl)">♣</div></div>
+      <div class="pcard back"><span>♠</span></div>
+    </div>
+  </div>
+
+  <h2>Modo Treino — Ações + Feedback GTO</h2>
+  <div class="row" style="margin-bottom:14px">
+    <button class="btn-ghost btn">Fold</button>
+    <button class="btn-ghost btn">Check</button>
+    <button class="btn">Raise 2.5bb</button>
+  </div>
+  <div class="row">
+    <div class="fb perfect">✓ &nbsp;PERFECT · EV loss 0.0 bb</div>
+    <div class="fb blunder">▼ &nbsp;BLUNDER · EV loss 0.8 bb</div>
+  </div>
+
+  <h2>Gestão de Banca — Stats + Input</h2>
+  <div class="row" style="margin-bottom:16px">
+    <div class="stat"><div class="lbl">Lucro total</div><div class="val pos">+ R$ 1.240</div></div>
+    <div class="stat"><div class="lbl">Downswing</div><div class="val neg">- R$ 380</div></div>
+    <div class="stat"><div class="lbl">Sessões</div><div class="val">47</div></div>
+  </div>
+  <div class="field"><label>Resultado da sessão</label><input value="+ R$ 120,00" /></div>
+
+</body>
+</html>
