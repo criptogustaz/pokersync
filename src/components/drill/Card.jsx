@@ -1,4 +1,5 @@
 import React from "react";
+import { C } from "../theme.js";
 
 const SUITS = {
   h: { glyph: "♥", color: C.suit.h },
