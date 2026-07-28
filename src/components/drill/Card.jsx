@@ -1,10 +1,10 @@
 import React from "react";
 
 const SUITS = {
-  h: { glyph: "♥", color: "#D4183D" },
-  d: { glyph: "♦", color: "#D4183D" },
-  s: { glyph: "♠", color: "#1A1A1A" },
-  c: { glyph: "♣", color: "#1A1A1A" },
+  h: { glyph: "♥", color: C.suit.h },
+  d: { glyph: "♦", color: C.suit.d },
+  s: { glyph: "♠", color: C.suit.s },
+  c: { glyph: "♣", color: C.suit.c },
 };
 
 const SIZES = {
@@ -24,14 +24,14 @@ export default function Card({ rank, suit, faceDown = false, size = "board" }) {
           width: s.w,
           height: s.h,
           borderRadius: s.radius,
-          background: "linear-gradient(135deg, #0F3D2E, #0B2D22)",
-          border: "2px solid #1C5C46",
-          boxShadow: "inset 0 0 0 2px rgba(228,197,90,0.18), 0 6px 14px rgba(0,0,0,0.5)",
+          background: "linear-gradient(135deg, #0E3A32, #0B2620)",
+          border: "2px solid #12574A",
+          boxShadow: "inset 0 0 0 2px rgba(255,255,255,0.12), 0 6px 14px rgba(0,0,0,0.5)",
           display: "grid",
           placeItems: "center",
         }}
       >
-        <span style={{ fontSize: s.center, color: "#E4C55A", opacity: 0.35 }}>♠</span>
+        <span style={{ fontSize: s.center, color: "rgba(47,184,154,0.35)", opacity: 0.35 }}>♠</span>
       </div>
     );
   }

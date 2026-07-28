@@ -74,8 +74,8 @@ export default function Dashboard({ onLogout }) {
                 width: 38,
                 height: 38,
                 borderRadius: "50%",
-                background: `linear-gradient(180deg, ${C.goldSoft}, ${C.gold})`,
-                color: "#141207",
+                background: C.accent,
+                color: C.accentText,
                 fontWeight: 700,
                 fontSize: 13,
               }}

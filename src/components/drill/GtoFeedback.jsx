@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { Check, TrendingDown, Info } from "lucide-react";
 import { C } from "../theme.js";
 import { matchUserActionToGtoNode } from "../../engine/matchUserActionToGtoNode.js";
@@ -23,15 +23,34 @@ function Bar({ label, pct, color }) {
   );
 }
 
-export default function GtoFeedback({ userAction, gtoNodes, context }) {
+export default function GtoFeedback({ userAction, gtoNodes, context, onResult }) {
   const result = matchUserActionToGtoNode(userAction, gtoNodes);
   const v = VERDICT[result.verdict] || VERDICT.UNKNOWN;
   const { Icon } = v;
 
+  // Notifica o pai uma única vez por resultado
+  const reported = useRef(false);
+  useEffect(() => {
+    if (!reported.current && onResult) {
+      reported.current = true;
+      onResult(result);
+    }
+  }, [result, onResult]);
+
+  // Reset ao trocar de mão
+  useEffect(() => {
+    reported.current = false;
+  }, [userAction]);
+
   const barColor = (n) =>
     n.action === "FOLD" ? C.neg : n.sizing === userAction.sizing && n.action === userAction.action ? C.pos : C.goldSoft;
 
-  const label = (n) => (n.action === "FOLD" ? "Fold" : `${n.action === "RAISE" ? "Raise" : n.action} ${n.sizing}bb`);
+  const label = (n) => {
+    if (n.action === "FOLD") return "Fold";
+    if (n.action === "CHECK") return "Check";
+    if (n.action === "CALL") return "Call";
+    return `${n.action} ${n.sizing}`;
+  };
 
   return (
     <section style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20 }}>

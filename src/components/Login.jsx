@@ -1,9 +1,9 @@
 import React, { useState } from "react";
-import { Spade, Diamond, Eye, EyeOff } from "lucide-react";
+import { Spade, Diamond, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { C, font } from "./theme.js";
 import Logo from "./Logo.jsx";
 import Field from "./Field.jsx";
-import { signIn } from "../services/authService.js";
+import { signIn, signUp } from "../services/authService.js";
 
 function Suit({ icon: Icon, style, size = 100, rot = 0 }) {
   return (
@@ -13,30 +13,97 @@ function Suit({ icon: Icon, style, size = 100, rot = 0 }) {
   );
 }
 
+// Botão dourado padrão do app, com estado de loading.
+function PrimaryButton({ onClick, loading, children }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        width: "100%",
+        marginTop: 24,
+        borderRadius: 12,
+        padding: 12,
+        fontSize: 15,
+        fontWeight: 600,
+        border: 0,
+        cursor: loading ? "default" : "pointer",
+        color: C.accentText,
+        background: hover ? C.accent : C.gold,
+        boxShadow: hover ? "0 8px 26px rgba(0,0,0,0.55)" : "0 4px 14px rgba(0,0,0,0.4)",
+        transform: hover && !loading ? "translateY(-1px)" : "none",
+        transition: "all .3s",
+        opacity: loading ? 0.7 : 1,
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function Login({ onEnter }) {
+  const [mode, setMode] = useState("signin"); // "signin" | "signup"
+
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [show, setShow] = useState(false);
-  const [hover, setHover] = useState(false);
+
   const [err, setErr] = useState("");
+  const [ok, setOk] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleEnter() {
+  function reset() {
     setErr("");
-    if (!email || !pass) {
-      setErr("Informe e-mail e senha.");
-      return;
-    }
+    setOk("");
+  }
+
+  function switchMode(next) {
+    reset();
+    setPass("");
+    setMode(next);
+  }
+
+  async function handleSignIn() {
+    reset();
+    if (!email || !pass) return setErr("Informe e-mail e senha.");
     setLoading(true);
     try {
-      await signIn(email, pass); // valida no Supabase; lança se inválido
+      await signIn(email, pass);
       onEnter();
-    } catch {
-      setErr("Não foi possível entrar. Verifique suas credenciais.");
+    } catch (e) {
+      console.error("Falha no login:", e);
+      setErr(e?.message || "Não foi possível entrar. Verifique suas credenciais.");
     } finally {
       setLoading(false);
     }
   }
+
+  async function handleSignUp() {
+    reset();
+    if (!name || !email || !pass) return setErr("Preencha nome, e-mail e senha.");
+    if (pass.length < 6) return setErr("A senha precisa ter ao menos 6 caracteres.");
+    setLoading(true);
+    try {
+      const { needsConfirmation } = await signUp(name, email, pass);
+      if (needsConfirmation) {
+        setOk("Conta criada! Enviamos um e-mail de confirmação — confirme para entrar.");
+        setMode("signin");
+      } else {
+        onEnter(); // confirmação desativada no projeto: entra direto
+      }
+    } catch (e) {
+      console.error("Falha no cadastro:", e);
+      setErr(e?.message || "Não foi possível criar a conta.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const isSignup = mode === "signup";
 
   return (
     <div
@@ -50,8 +117,8 @@ export default function Login({ onEnter }) {
         position: "relative",
         overflow: "hidden",
         color: C.text,
-        background: `radial-gradient(700px circle at 25% 20%, rgba(201,162,39,0.10), transparent 55%),
-                     radial-gradient(680px circle at 78% 82%, rgba(15,61,46,0.55), transparent 60%),
+        background: `radial-gradient(700px circle at 25% 20%, rgba(255,255,255,0.05), transparent 55%),
+                     radial-gradient(680px circle at 78% 82%, rgba(255,255,255,0.03), transparent 60%),
                      ${C.bg}`,
       }}
     >
@@ -71,13 +138,37 @@ export default function Login({ onEnter }) {
           boxShadow: "0 30px 80px rgba(0,0,0,0.55)",
         }}
       >
+        {isSignup && (
+          <button
+            onClick={() => switchMode("signin")}
+            aria-label="Voltar ao login"
+            style={{
+              position: "absolute",
+              top: 20,
+              left: 20,
+              display: "grid",
+              placeItems: "center",
+              width: 34,
+              height: 34,
+              borderRadius: 9,
+              background: C.panel2,
+              border: `1px solid ${C.line}`,
+              color: C.sub,
+              cursor: "pointer",
+            }}
+          >
+            <ArrowLeft size={17} />
+          </button>
+        )}
+
         <Logo center />
         <p style={{ textAlign: "center", margin: "8px 0 28px", fontSize: 13, color: C.sub }}>
-          Treino de poker GTO. Entre para continuar.
+          {isSignup ? "Crie sua conta para começar a treinar." : "Treino de poker GTO. Entre para continuar."}
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <Field label="Usuário ou e-mail" value={email} onChange={setEmail} />
+          {isSignup && <Field label="Nome completo" value={name} onChange={setName} />}
+          <Field label="E-mail" value={email} onChange={setEmail} />
           <Field
             label="Senha"
             type={show ? "text" : "password"}
@@ -95,38 +186,46 @@ export default function Login({ onEnter }) {
           />
         </div>
 
-        {err && <p style={{ color: "#f87171", fontSize: 12, marginTop: 8 }}>{err}</p>}
+        {err && <p style={{ color: C.negSoft, fontSize: 12, marginTop: 10 }}>{err}</p>}
+        {ok && <p style={{ color: C.posSoft, fontSize: 12, marginTop: 10 }}>{ok}</p>}
 
-        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
-          <a href="#" style={{ fontSize: 12, color: C.sub, textDecoration: "none" }}>
-            Esqueci minha senha
-          </a>
+        {!isSignup && (
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
+            <a href="#" style={{ fontSize: 12, color: C.sub, textDecoration: "none" }}>
+              Esqueci minha senha
+            </a>
+          </div>
+        )}
+
+        <PrimaryButton onClick={isSignup ? handleSignUp : handleSignIn} loading={loading}>
+          {loading
+            ? isSignup ? "Criando…" : "Entrando…"
+            : isSignup ? "Criar conta" : "Entrar"}
+        </PrimaryButton>
+
+        <div style={{ textAlign: "center", marginTop: 18, fontSize: 13, color: C.sub }}>
+          {isSignup ? (
+            <>
+              Já tem conta?{" "}
+              <button
+                onClick={() => switchMode("signin")}
+                style={{ background: "none", border: 0, color: C.gold, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+              >
+                Entrar
+              </button>
+            </>
+          ) : (
+            <>
+              Não tem conta?{" "}
+              <button
+                onClick={() => switchMode("signup")}
+                style={{ background: "none", border: 0, color: C.gold, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
+              >
+                Criar nova conta
+              </button>
+            </>
+          )}
         </div>
-
-        <button
-          onClick={handleEnter}
-          disabled={loading}
-          onMouseEnter={() => setHover(true)}
-          onMouseLeave={() => setHover(false)}
-          style={{
-            width: "100%",
-            marginTop: 24,
-            borderRadius: 12,
-            padding: 12,
-            fontSize: 15,
-            fontWeight: 600,
-            border: 0,
-            cursor: "pointer",
-            color: "#141207",
-            background: hover ? `linear-gradient(180deg, ${C.goldSoft}, ${C.gold})` : C.gold,
-            boxShadow: hover ? "0 8px 26px rgba(201,162,39,0.45)" : "0 4px 14px rgba(201,162,39,0.22)",
-            transform: hover ? "translateY(-1px)" : "none",
-            transition: "all .3s",
-            opacity: loading ? 0.7 : 1,
-          }}
-        >
-          {loading ? "Entrando…" : "Entrar"}
-        </button>
       </div>
     </div>
   );

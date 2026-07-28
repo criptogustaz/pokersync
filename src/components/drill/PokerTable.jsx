@@ -25,7 +25,7 @@ function Seat({ left, top, label, sub, stack, active }) {
           borderRadius: "50%",
           background: C.panel2,
           border: `2px solid ${active ? C.gold : C.line}`,
-          boxShadow: active ? "0 0 0 3px rgba(201,162,39,0.25)" : "none",
+          boxShadow: active ? "0 0 0 3px rgba(47,184,154,0.30)" : "none",
           color: active ? C.goldSoft : C.sub,
           fontWeight: 700,
           fontSize: 13,
@@ -56,12 +56,12 @@ export default function PokerTable({ seats, pot, board, hero, children }) {
           position: "absolute",
           inset: "70px 90px",
           borderRadius: "180px / 120px",
-          background: "radial-gradient(120% 120% at 50% 40%, #146b4a 0%, #0F3D2E 55%, #0b2d22 100%)",
-          border: "10px solid #103a2c",
+          background: "radial-gradient(120% 120% at 50% 40%, #12574A 0%, #0E3A32 55%, #0B2620 100%)",
+          border: "10px solid #0B2620",
           boxShadow: "inset 0 0 60px rgba(0,0,0,0.55), 0 20px 60px rgba(0,0,0,0.5)",
         }}
       />
-      <div style={{ position: "absolute", inset: "70px 90px", borderRadius: "180px / 120px", border: "2px solid rgba(228,197,90,0.25)" }} />
+      <div style={{ position: "absolute", inset: "70px 90px", borderRadius: "180px / 120px", border: "2px solid rgba(47,184,154,0.30)" }} />
 
       {seats.map((s, i) => (
         <Seat key={i} {...s} />
@@ -70,7 +70,7 @@ export default function PokerTable({ seats, pot, board, hero, children }) {
       <div style={{ position: "absolute", left: "50%", top: "41%", transform: "translate(-50%,-50%)", textAlign: "center" }}>
         <div style={{ fontSize: 12, color: C.goldSoft, letterSpacing: "0.14em", textTransform: "uppercase" }}>Pote</div>
         <div style={{ fontSize: 20, fontWeight: 800, color: C.text, marginTop: 2 }}>
-          <span style={{ width: 16, height: 16, borderRadius: "50%", background: C.gold, border: "2px dashed #8a6d16", display: "inline-block", verticalAlign: "middle", marginRight: 6 }} />
+          <span style={{ width: 16, height: 16, borderRadius: "50%", background: C.gold, border: "2px dashed #12574A", display: "inline-block", verticalAlign: "middle", marginRight: 6 }} />
           {pot} bb
         </div>
       </div>

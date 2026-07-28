@@ -7,6 +7,8 @@ import { FORMATS, suggestFormat, suggestBuyIn, knownVenues, todayISO } from "../
 const uid = () =>
   (globalThis.crypto?.randomUUID?.() ?? `s_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`);
 
+const gridAuto = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 };
+
 export default function SmartEntryForm({ sessions, onAdd }) {
   const smartFormat = suggestFormat(sessions);
   const [form, setForm] = useState({
@@ -16,10 +18,13 @@ export default function SmartEntryForm({ sessions, onAdd }) {
     buyIn: suggestBuyIn(sessions, smartFormat),
     reentries: 0,
     cashout: "",
+    stake: "",
+    hours: "",
     venue: "",
     notes: "",
   });
   const [error, setError] = useState("");
+  const isCash = form.format === "Cash";
 
   // Inteligência: ao trocar o formato, sugere o último buy-in usado nele.
   useEffect(() => {
@@ -32,7 +37,7 @@ export default function SmartEntryForm({ sessions, onAdd }) {
   function submit() {
     const buyIn = Number(form.buyIn);
     if (!buyIn || buyIn <= 0) {
-      setError("Informe um buy-in válido.");
+      setError(isCash ? "Informe o buy-in inicial." : "Informe um buy-in válido.");
       return;
     }
     setError("");
@@ -42,38 +47,45 @@ export default function SmartEntryForm({ sessions, onAdd }) {
       time: form.time,
       format: form.format,
       buyIn,
-      reentries: Number(form.reentries) || 0,
+      reentries: isCash ? 0 : Number(form.reentries) || 0,
       cashout: Number(form.cashout) || 0,
       venue: form.venue.trim(),
       notes: form.notes.trim(),
+      ...(isCash ? { stake: form.stake.trim(), hours: Number(form.hours) || 0 } : {}),
     });
     // mantém data/formato/local para input rápido em sequência
-    setForm((f) => ({ ...f, cashout: "", reentries: 0, notes: "" }));
+    setForm((f) => ({ ...f, cashout: "", reentries: 0, hours: "", notes: "" }));
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          fontSize: 12,
-          color: C.goldSoft,
-        }}
-      >
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: C.goldSoft }}>
         <Sparkles size={13} />
         Sugerido pelo seu histórico: <strong style={{ color: C.text }}>{smartFormat}</strong>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
+      <div style={gridAuto}>
         <Input label="Data" type="date" value={form.date} onChange={set("date")} />
         <Input label="Hora" type="time" value={form.time} onChange={set("time")} />
         <Select label="Formato" options={FORMATS} value={form.format} onChange={set("format")} />
-        <Input label="Buy-in (R$)" type="number" min="0" step="0.01" value={form.buyIn} onChange={set("buyIn")} />
-        <Input label="Reentradas" type="number" min="0" step="1" value={form.reentries} onChange={set("reentries")} />
-        <Input label="Cashout (R$)" type="number" min="0" step="0.01" value={form.cashout} onChange={set("cashout")} placeholder="0" />
       </div>
+
+      {isCash ? (
+        // Cash Game: sem reentradas; com stake/blinds e duração.
+        <div style={gridAuto}>
+          <Input label="Buy-in inicial (R$)" type="number" min="0" step="0.01" value={form.buyIn} onChange={set("buyIn")} />
+          <Input label="Cashout final (R$)" type="number" min="0" step="0.01" value={form.cashout} onChange={set("cashout")} placeholder="0" />
+          <Input label="Stake / Blinds" value={form.stake} onChange={set("stake")} placeholder="NL50" />
+          <Input label="Duração (horas)" type="number" min="0" step="0.5" value={form.hours} onChange={set("hours")} placeholder="2" />
+        </div>
+      ) : (
+        // Torneios: buy-in, reentradas e cashout.
+        <div style={gridAuto}>
+          <Input label="Buy-in (R$)" type="number" min="0" step="0.01" value={form.buyIn} onChange={set("buyIn")} />
+          <Input label="Reentradas" type="number" min="0" step="1" value={form.reentries} onChange={set("reentries")} />
+          <Input label="Cashout (R$)" type="number" min="0" step="0.01" value={form.cashout} onChange={set("cashout")} placeholder="0" />
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
         <Input label="Plataforma / Local" value={form.venue} onChange={set("venue")} list="venues" placeholder="PokerStars, GGPoker…" />
@@ -90,19 +102,9 @@ export default function SmartEntryForm({ sessions, onAdd }) {
       <button
         onClick={submit}
         style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          alignSelf: "flex-start",
-          border: 0,
-          cursor: "pointer",
-          borderRadius: 10,
-          padding: "10px 18px",
-          fontSize: 14,
-          fontWeight: 600,
-          color: "#141207",
-          background: C.gold,
+          display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+          alignSelf: "flex-start", border: 0, cursor: "pointer", borderRadius: 10,
+          padding: "10px 18px", fontSize: 14, fontWeight: 600, color: C.accentText, background: C.gold,
         }}
       >
         <Plus size={16} /> Registrar sessão

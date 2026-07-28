@@ -33,6 +33,20 @@ export async function signIn(email, password) {
   return data;
 }
 
+// Cadastro: guarda o nome em user_metadata. Retorna { needsConfirmation }.
+// Se o projeto exigir confirmação de e-mail, o usuário não loga na hora —
+// recebe um e-mail para confirmar antes do primeiro acesso.
+export async function signUp(name, email, password) {
+  const { data, error } = await client().auth.signUp({
+    email,
+    password,
+    options: { data: { name } },
+  });
+  if (error) throw error;
+  // session === null quando a confirmação de e-mail está ativa.
+  return { user: data.user, needsConfirmation: !data.session };
+}
+
 export async function signOut() {
   await client().auth.signOut();
 }

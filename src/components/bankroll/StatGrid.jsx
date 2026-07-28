@@ -27,7 +27,7 @@ export default function StatGrid({ agg }) {
   const cards = [
     { icon: TrendingUp, label: "Lucro / Prejuízo", value: fmtSignedMoney(agg.profit), color: signColor(agg.profit), sub: `${agg.n} sessões` },
     { icon: Percent, label: "ROI", value: fmtPct(agg.roi), color: signColor(agg.roi), sub: `Investido: ${fmtMoney(agg.totalInvested)}` },
-    { icon: Target, label: "ITM", value: `${agg.itm.toFixed(0)}%`, color: C.text, sub: `${agg.itmCount}/${agg.tourneyCount} torneios` },
+    { icon: Target, label: "ITM (Torneios)", value: `${agg.itm.toFixed(0)}%`, color: C.text, sub: `${agg.itmCount}/${agg.tourneyCount} torneios` },
     { icon: Coins, label: "Avg. Buy-in", value: fmtMoney(agg.avgBuyIn), color: C.text, sub: "stake médio" },
   ];
   return (

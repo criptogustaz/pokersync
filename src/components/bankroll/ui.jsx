@@ -52,7 +52,7 @@ export function Segmented({ options, value, onChange }) {
               fontSize: 12,
               fontWeight: 600,
               transition: "all .2s",
-              color: active ? "#141207" : C.sub,
+              color: active ? "#111111" : C.sub,
               background: active ? C.gold : "transparent",
             }}
           >

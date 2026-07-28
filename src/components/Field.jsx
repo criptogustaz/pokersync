@@ -12,7 +12,7 @@ export default function Field({ label, type = "text", value = "", onChange, trai
         padding: "20px 16px 8px",
         background: C.panel2,
         border: `1px solid ${focus ? C.gold : C.line}`,
-        boxShadow: focus ? "0 0 0 3px rgba(201,162,39,0.15)" : "none",
+        boxShadow: focus ? "0 0 0 3px rgba(255,255,255,0.14)" : "none",
         transition: "all .3s",
       }}
     >

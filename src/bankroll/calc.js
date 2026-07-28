@@ -81,3 +81,15 @@ export function groupStats(sessions, dimension) {
     })
     .sort((a, b) => a.net - b.net);
 }
+
+// Filtra a série de evolução por janela de tempo relativa à última sessão.
+// range: "7D" | "30D" | "1Y" | "all"
+export function filterSeriesByRange(series, range) {
+  if (!series?.length || range === "all") return series;
+  const days = { "7D": 7, "30D": 30, "1Y": 365 }[range];
+  if (!days) return series;
+  const ref = new Date(series[series.length - 1].date + "T12:00:00");
+  const cutoff = new Date(ref);
+  cutoff.setDate(ref.getDate() - days);
+  return series.filter((p) => new Date(p.date + "T12:00:00") >= cutoff);
+}
