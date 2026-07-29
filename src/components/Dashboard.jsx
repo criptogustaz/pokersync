@@ -1,93 +1,118 @@
-import React, { useState } from "react";
-import { Search, LogOut, Club, Target, TrendingUp, Heart, Spade, Diamond } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { Search, Bell, Settings, LogOut, Target, TrendingUp, BookOpen, Layers } from "lucide-react";
 import { C, font } from "./theme.js";
 import Logo from "./Logo.jsx";
-import Track from "./Track.jsx";
 import ModuleCard from "./ModuleCard.jsx";
 import BankrollView from "./bankroll/BankrollView.jsx";
 import DrillView from "./drill/DrillView.jsx";
 import { signOut } from "../services/authService.js";
+import { aggregate } from "../bankroll/calc.js";
+import { loadState } from "../bankroll/storage.js";
+import { SAMPLE_SESSIONS } from "../bankroll/sampleData.js";
+import { fmtMoney, fmtPct } from "../bankroll/format.js";
+
+const BANKROLL_DEFAULT = { sessions: SAMPLE_SESSIONS, bankroll: 1500, profile: "Padrão" };
+
+// ── Botão de ícone da navbar ──────────────────────────────────────────────
+function NavIconButton({ children, title, onClick }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button
+      title={title}
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{ background: hov ? "rgba(255,255,255,0.08)" : "none", border: "none", cursor: "pointer", display: "grid", placeItems: "center", padding: 8, borderRadius: 9999, color: C.sub, transition: "background .2s" }}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ── Métrica compacta ──────────────────────────────────────────────────────
+function CompactMetric({ label, value, hint, dot }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{ flex: 1, display: "flex", alignItems: "center", gap: 12, background: hov ? "rgba(255,255,255,0.04)" : "transparent", border: `1px solid ${hov ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.06)"}`, borderRadius: 8, padding: "10px 16px", transition: "background .2s, border-color .2s" }}
+    >
+      <div style={{ width: 6, height: 6, borderRadius: "50%", background: dot, flexShrink: 0, boxShadow: hov ? `0 0 8px ${dot}` : "none", transition: "box-shadow .2s" }} />
+      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.sub, margin: 0, whiteSpace: "nowrap" }}>{label}</p>
+      <p style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: "0 0 0 auto" }}>{value}</p>
+      {hint && <p style={{ fontSize: 11, color: dot, margin: 0, whiteSpace: "nowrap", opacity: hov ? 1 : 0.7, transition: "opacity .2s" }}>{hint}</p>}
+    </div>
+  );
+}
 
 export default function Dashboard({ onLogout }) {
   const [q, setQ] = useState("");
   const [view, setView] = useState("home");
+  const [nav, setNav] = useState("Início");
+
+  // Métricas reais da banca (mesma fonte do módulo de Gestão de Banca).
+  const bankrollState = useMemo(() => loadState(BANKROLL_DEFAULT), []);
+  const agg = useMemo(() => aggregate(bankrollState.sessions), [bankrollState]);
+  const currentBankroll = (Number(bankrollState.bankroll) || 0) + agg.profit;
 
   async function handleLogout() {
-    // Em produção: await signOut();
+    await signOut();
     onLogout();
   }
 
+  const modules = [
+    { key: "drill",    icon: Target,     title: "Modo Treino",         subtitle: "Ranges e frequências GTO",   tag: "ATIVO", available: true,  onClick: () => setView("drill") },
+    { key: "bankroll", icon: TrendingUp, title: "Gestão de Banca",     subtitle: "Controle de risco e ROI",    available: true,  onClick: () => setView("bankroll") },
+    { key: "revisor",  icon: BookOpen,   title: "Revisor de Mãos",     subtitle: "Análise técnica de jogadas", available: false },
+    { key: "ranges",   icon: Layers,     title: "Construtor de Ranges", subtitle: "Mapeamento estratégico",    available: false },
+  ];
+
   return (
     <div style={{ ...font, minHeight: "100vh", background: C.bg, color: C.text }}>
-      <header
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 40,
-          background: "rgba(11,12,15,0.72)",
-          backdropFilter: "blur(16px)",
-          borderBottom: `1px solid ${C.line}`,
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1152,
-            margin: "0 auto",
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            padding: "0 24px",
-            height: 64,
-          }}
-        >
-          <Logo />
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              flex: 1,
-              maxWidth: 420,
-              margin: "0 auto",
-              background: C.panel2,
-              border: `1px solid ${C.line}`,
-              borderRadius: 12,
-              padding: "9px 12px",
-            }}
-          >
-            <Search size={17} color={C.sub} />
+      {/* ── Top Nav ── */}
+      <header style={{ position: "sticky", top: 0, zIndex: 40, background: "rgba(0,0,0,0.88)", backdropFilter: "blur(16px)", borderBottom: `1px solid ${C.line}` }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", gap: 16, padding: "0 24px", height: 72 }}>
+          <Logo size="sm" />
+
+          <nav style={{ display: "flex", alignItems: "center", gap: 24, marginLeft: 24 }}>
+            {["Início", "Desempenho"].map((item) => {
+              const activeItem = nav === item;
+              return (
+                <button
+                  key={item}
+                  onClick={() => setNav(item)}
+                  style={{ position: "relative", fontWeight: 700, fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: activeItem ? C.text : C.sub, background: "none", border: "none", cursor: "pointer", paddingBottom: 4, transition: "color .2s" }}
+                >
+                  {item}
+                  <span style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: C.text, borderRadius: 1, transform: activeItem ? "scaleX(1)" : "scaleX(0)", transformOrigin: "left", transition: "transform .25s" }} />
+                </button>
+              );
+            })}
+          </nav>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, maxWidth: 360, margin: "0 auto", background: "rgba(255,255,255,0.03)", border: `1px solid ${C.line}`, borderRadius: 12, padding: "9px 14px" }}>
+            <Search size={16} color={C.sub} strokeWidth={1.5} />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Buscar módulos, drills, relatórios…"
-              style={{ width: "100%", background: "transparent", border: 0, outline: "none", color: C.text, fontSize: 14 }}
+              style={{ width: "100%", background: "transparent", border: 0, outline: "none", color: C.text, fontSize: 14, fontFamily: '"Space Grotesk", sans-serif' }}
             />
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginLeft: "auto" }}>
-            <button onClick={handleLogout} title="Sair" style={{ background: "none", border: 0, color: C.sub, cursor: "pointer" }}>
-              <LogOut size={19} />
-            </button>
-            <span
-              style={{
-                display: "grid",
-                placeItems: "center",
-                width: 38,
-                height: 38,
-                borderRadius: "50%",
-                background: C.accent,
-                color: C.accentText,
-                fontWeight: 700,
-                fontSize: 13,
-              }}
-            >
-              JP
-            </span>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto" }}>
+            <NavIconButton title="Notificações"><Bell size={18} strokeWidth={1.5} /></NavIconButton>
+            <NavIconButton title="Configurações"><Settings size={18} strokeWidth={1.5} /></NavIconButton>
+            <NavIconButton title="Sair" onClick={handleLogout}><LogOut size={18} strokeWidth={1.5} /></NavIconButton>
+            <span style={{ marginLeft: 6, display: "grid", placeItems: "center", width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: `1px solid ${C.line}`, color: C.text, fontWeight: 600, fontSize: 13 }}>JP</span>
           </div>
         </div>
       </header>
 
+      {/* ── Views ── */}
       {view === "bankroll" ? (
-        <div style={{ maxWidth: 1152, margin: "0 auto", padding: "24px 24px 0" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 24px 0" }}>
           <BankrollView onBack={() => setView("home")} />
         </div>
       ) : view === "drill" ? (
@@ -95,44 +120,30 @@ export default function Dashboard({ onLogout }) {
           <DrillView onBack={() => setView("home")} />
         </div>
       ) : (
-        <>
-      <div style={{ maxWidth: 1152, margin: "0 auto", padding: "32px 24px 0" }}>
-        <div
-          style={{
-            borderRadius: 16,
-            padding: 32,
-            position: "relative",
-            overflow: "hidden",
-            background: `linear-gradient(120deg, ${C.felt}, ${C.panel})`,
-            border: `1px solid ${C.line}`,
-          }}
-        >
-          <div style={{ position: "absolute", right: -16, bottom: -24, opacity: 0.2, color: C.goldSoft }}>
-            <Club size={160} strokeWidth={1} />
+        <main style={{ maxWidth: 1200, margin: "0 auto", padding: "36px 24px 60px", display: "flex", flexDirection: "column", gap: 28 }}>
+          {/* Banner */}
+          <div style={{ position: "relative", overflow: "hidden", borderRadius: 12, border: `1px solid ${C.line}`, background: C.panel, padding: "36px 40px" }}>
+            <p style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: C.sub, fontWeight: 500, margin: 0 }}>Bem-vindo de volta</p>
+            <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-0.02em", marginTop: 10, color: C.text }}>Tudo em um único lugar.</h1>
           </div>
-          <p style={{ fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", color: C.goldSoft }}>
-            Bem-vindo de volta
-          </p>
-          <h1 style={{ fontSize: 32, fontWeight: 700, marginTop: 6, maxWidth: 520, lineHeight: 1.15 }}>
-            Refine sua estratégia GTO onde ela vaza mais.
-          </h1>
-        </div>
-      </div>
 
-      <main style={{ maxWidth: 1152, margin: "0 auto", padding: "0 24px 60px" }}>
-        <Track title="Continuar treinando">
-          <ModuleCard title="Modo Treino" desc="Simulação de situações, drills e análise de mãos em tempo real." icon={Target} tint={C.felt} edge={C.feltEdge} onClick={() => setView("drill")} />
-          <ModuleCard title="Gestão de Banca" desc="Controle financeiro, análise de lucros e evolução do bankroll." icon={TrendingUp} tint="#1a1710" edge={C.gold} onClick={() => setView("bankroll")} />
-          <ModuleCard title="Revisão de Mãos" desc="Reveja spots marcados e compare suas ações com a solução ótima." icon={Heart} tint={C.panel2} edge={C.line} />
-        </Track>
+          {/* Métricas reais */}
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <CompactMetric label="BANCA ATUAL" value={fmtMoney(currentBankroll)} hint={fmtPct(agg.roi) + " ROI"} dot={agg.profit >= 0 ? C.pos : C.neg} />
+            <CompactMetric label="SESSÕES" value={String(agg.n)} hint={agg.tourneyCount + " torneios"} dot={C.info} />
+            <CompactMetric label="ITM (TORNEIOS)" value={agg.itm.toFixed(0) + "%"} hint="Estável" dot={C.warn} />
+          </div>
 
-        <Track title="Recomendado para você">
-          <ModuleCard title="Drills de Sizing" desc="Calibre bet sizing dentro da tolerância dos nós GTO." icon={Spade} tint={C.panel2} edge={C.line} />
-          <ModuleCard title="Relatório de Evolução" desc="EV loss acumulado, blunders por rua e curva de progresso." icon={TrendingUp} tint="#1a1710" edge={C.gold} />
-          <ModuleCard title="Ranges Pré-flop" desc="Estude aberturas, 3-bets e defesas por posição." icon={Diamond} tint={C.felt} edge={C.feltEdge} />
-        </Track>
-      </main>
-        </>
+          {/* Módulos */}
+          <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <p style={{ fontSize: 16, fontWeight: 600, color: C.sub, margin: 0, letterSpacing: "0.02em" }}>Módulos Principais</p>
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+              {modules.map(({ key, ...mod }) => (
+                <ModuleCard key={key} {...mod} />
+              ))}
+            </div>
+          </section>
+        </main>
       )}
     </div>
   );

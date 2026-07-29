@@ -14,9 +14,11 @@ async function fetchWithRetry(path, { retries = 2, backoff = 800 } = {}) {
   }
 }
 
-// Hook React: busca um lote de mãos e expõe estado declarativo.
-// Uso: const { loading, hands, error, reload } = useDrillBatch(20);
-export function useDrillBatch(size = 20) {
+/**
+ * Hook React: busca lote de mãos com suporte a filtros.
+ * Uso: const { hands, loading, error, reload } = useDrillBatch(20, filterQueryString);
+ */
+export function useDrillBatch(size = 20, filterQs = "") {
   const [hands, setHands] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,14 +27,15 @@ export function useDrillBatch(size = 20) {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchWithRetry(`/api/drills/batch?size=${size}`);
+      const qs = filterQs ? `size=${size}&${filterQs}` : `size=${size}`;
+      const data = await fetchWithRetry(`/api/drills/batch?${qs}`);
       setHands(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err);
     } finally {
       setLoading(false);
     }
-  }, [size]);
+  }, [size, filterQs]);
 
   useEffect(() => {
     load();
