@@ -1,18 +1,207 @@
-<!doctype html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PokerSync</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="./src/main.jsx"></script>
-  </body>
-</html>
+<!-- ============ HEADER ============ -->
+<header class="page-header" data-staking="off">
+  <h1 class="page-title">Gestão de Banca</h1>
+
+  <div class="header-tools">
+    <!-- Desktop Agent: recurso pago, bloqueado temporariamente -->
+    <button class="agent-btn is-locked" id="agent-trigger" aria-disabled="true"
+            aria-label="Auto-sync via Desktop Agent (recurso PRO)">
+      <svg class="agent-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="8" width="16" height="11" rx="2"></rect>
+        <path d="M12 8V5"></path><circle cx="12" cy="4" r="1"></circle>
+        <circle cx="9" cy="13" r="1"></circle><circle cx="15" cy="13" r="1"></circle>
+        <path d="M9 16.5h6"></path>
+      </svg>
+      <span class="agent-label">Auto-sync</span>
+      <svg class="agent-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="11" width="14" height="9" rx="2"></rect>
+        <path d="M8 11V8a4 4 0 0 1 8 0v3"></path>
+      </svg>
+      <span class="agent-badge">PRO</span>
+    </button>
+
+    <!-- Filtro de visão: só relevante quando bancado (aparece via data-staking) -->
+    <div class="view-switch" role="radiogroup" aria-label="Visão do dashboard">
+      <button class="view-pill is-active" role="radio" aria-checked="true"  data-view="global">Global (Mesas)</button>
+      <button class="view-pill"           role="radio" aria-checked="false" data-view="mine">Minha Parte</button>
+    </div>
+
+    <!-- Filtro de moeda -->
+    <div class="currency-switch" role="radiogroup" aria-label="Moeda">
+      <button class="currency-pill is-active" role="radio" aria-checked="true"  data-currency="BRL">BRL</button>
+      <button class="currency-pill"           role="radio" aria-checked="false" data-currency="USD">USD</button>
+      <button class="currency-pill"           role="radio" aria-checked="false" data-currency="EUR">EUR</button>
+    </div>
+
+    <!-- Calculadora de banca: fechada por padrão (uso pouco frequente) -->
+    <div class="calc-menu">
+      <button class="icon-btn" id="calc-trigger" aria-haspopup="dialog" aria-expanded="false" aria-label="Calculadora de banca">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="5" y="3" width="14" height="18" rx="2"></rect>
+          <line x1="9" y1="7" x2="15" y2="7"></line>
+          <line x1="9" y1="11" x2="9" y2="11"></line>
+          <line x1="12" y1="11" x2="12" y2="11"></line>
+          <line x1="15" y1="11" x2="15" y2="11"></line>
+          <line x1="9" y1="15" x2="9" y2="15"></line>
+          <line x1="12" y1="15" x2="12" y2="15"></line>
+          <line x1="15" y1="15" x2="15" y2="17"></line>
+        </svg>
+      </button>
+
+      <div class="calc-popover" id="calc-popover" role="dialog" aria-label="Calculadora de banca" hidden>
+        <p class="calc-title">Calculadora de banca</p>
+
+        <label class="field">
+          <span>Banca atual</span>
+          <input type="number" id="calc-bankroll" inputmode="decimal" placeholder="0,00" value="10000">
+        </label>
+
+        <!-- Regra de buy-ins mínimos: presets + custom -->
+        <div class="field">
+          <span>Buy-ins mínimos (sua regra)</span>
+          <div class="buyin-presets" role="radiogroup" aria-label="Buy-ins mínimos">
+            <button class="buyin-pill is-active" role="radio" aria-checked="true"  data-buyins="20">20</button>
+            <button class="buyin-pill"           role="radio" aria-checked="false" data-buyins="30">30</button>
+            <button class="buyin-pill"           role="radio" aria-checked="false" data-buyins="50">50</button>
+            <button class="buyin-pill"           role="radio" aria-checked="false" data-buyins="100">100</button>
+            <input type="number" id="calc-custom" class="buyin-custom" min="1" placeholder="Custom" aria-label="Buy-ins customizado">
+          </div>
+        </div>
+
+        <!-- Resultado -->
+        <div class="calc-result" id="calc-result" data-status="safe">
+          <div class="calc-row">
+            <span>Buy-in máximo recomendado</span>
+            <strong id="calc-maxbuyin">R$ 500,00</strong>
+          </div>
+          <p class="calc-status" id="calc-status">Dentro da sua gestão de banca.</p>
+        </div>
+
+        <button class="calc-save" id="calc-save">Salvar como minha regra</button>
+      </div>
+    </div>
+
+    <!-- Engrenagem: abre popover "Detalhes do Contrato" -->
+    <div class="deal-menu">
+      <button class="icon-btn" id="deal-trigger" aria-haspopup="dialog" aria-expanded="false" aria-label="Detalhes do contrato">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+
+      <!-- Popover -->
+      <div class="deal-popover" id="deal-popover" role="dialog" aria-label="Detalhes do contrato" hidden>
+        <label class="deal-toggle">
+          <input type="checkbox" id="staking-on">
+          <span>Sou bancado (staking)</span>
+        </label>
+
+        <div class="deal-fields" data-locked="true">
+          <label class="field">
+            <span>Meu corte (%)</span>
+            <div class="split-input">
+              <input type="number" id="deal-share" min="0" max="100" step="5" value="50" disabled>
+              <span class="split-preview" id="deal-preview">Jogador 50% · Time 50%</span>
+            </div>
+          </label>
+          <label class="field">
+            <span>Makeup atual (dívida com o time)</span>
+            <input type="number" id="deal-makeup" inputmode="decimal" placeholder="0,00" value="0" disabled>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ CARD: LUCRO / PREJUÍZO (KPI) ============ -->
+<section class="card kpi-card" id="pnl-card" data-mode="free">
+  <header class="kpi-head">
+    <span class="kpi-label">Lucro / Prejuízo</span>
+    <span class="kpi-scope" id="pnl-scope">Visão Global</span>
+  </header>
+
+  <strong class="kpi-value" id="pnl-value">+R$ 4.250,00</strong>
+
+  <!-- Linha secundária: muda conforme makeup / lucro livre -->
+  <div class="kpi-sub">
+    <!-- Estado A: em makeup (dívida) -->
+    <p class="sub-makeup" id="sub-makeup">
+      <span class="dot dot--makeup"></span>
+      Makeup atual: <strong>-R$ 1.000,00</strong>
+    </p>
+    <!-- Estado B: lucro livre (acima do makeup) -->
+    <p class="sub-split" id="sub-split" hidden>
+      <span class="dot dot--free"></span>
+      Seu lucro: <strong class="pos">R$ 2.125,00</strong>
+      <span class="sep">|</span>
+      Time: <strong>R$ 2.125,00</strong>
+    </p>
+  </div>
+</section>
+
+<!-- ============ CARD: REGISTRAR SESSÃO ============ -->
+<section class="card" id="register-card">
+  <!-- Toggle de modos -->
+  <div class="tabs" role="tablist" aria-label="Tipo de lançamento">
+    <button class="tab is-active" role="tab" aria-selected="true"  id="tab-session"     aria-controls="panel-session"     data-tab="session">Sessão nas Mesas</button>
+    <button class="tab"           role="tab" aria-selected="false" id="tab-transaction" aria-controls="panel-transaction" data-tab="transaction">Transação / Caixa</button>
+  </div>
+
+  <!-- PAINEL 1: Sessão nas Mesas -->
+  <div class="panel" role="tabpanel" id="panel-session" aria-labelledby="tab-session">
+    <div class="field-grid">
+      <label class="field">
+        <span>Buy-in</span>
+        <input type="number" inputmode="decimal" placeholder="0,00" data-money>
+      </label>
+      <label class="field">
+        <span>Reentradas</span>
+        <input type="number" inputmode="numeric" placeholder="0">
+      </label>
+      <label class="field">
+        <span>Formato</span>
+        <select>
+          <option>Cash Game</option>
+          <option>Torneio (MTT)</option>
+          <option>Sit &amp; Go</option>
+          <option>Spin</option>
+        </select>
+      </label>
+      <!-- Substitui o antigo "Cashout" -->
+      <label class="field">
+        <span>Mindset</span>
+        <select>
+          <option value="a">A-Game</option>
+          <option value="b">B-Game</option>
+          <option value="c">C-Game / Tilt</option>
+        </select>
+      </label>
+    </div>
+    <button class="cta" type="submit">+ Registrar sessão</button>
+  </div>
+
+  <!-- PAINEL 2: Transação / Caixa -->
+  <div class="panel is-hidden" role="tabpanel" id="panel-transaction" aria-labelledby="tab-transaction" hidden>
+    <div class="field-grid">
+      <label class="field">
+        <span>Tipo</span>
+        <select>
+          <option value="deposit">Depósito</option>
+          <option value="withdraw">Saque</option>
+          <option value="rakeback">Rakeback / Bônus</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Valor</span>
+        <input type="number" inputmode="decimal" placeholder="0,00" data-money>
+      </label>
+      <label class="field field--full">
+        <span>Data</span>
+        <input type="date">
+      </label>
+    </div>
+    <button class="cta" type="submit">+ Registrar transação</button>
+  </div>
+</section>
