@@ -1,0 +1,196 @@
+import React, { useState } from "react";
+import { User, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { font } from "./theme.js";
+import Logo from "./Logo.jsx";
+import { signIn, signUp } from "../services/authService.js";
+
+// Paleta local — design monocromático (preto puro / branco).
+const P = {
+  void: "#000000",
+  glass: "rgba(30,30,30,0.6)",
+  inputBg: "#0e0e0e",
+  hairline: "rgba(255,255,255,0.08)",
+  white: "#ffffff",
+  muted: "#c4c7c8",
+  placeholder: "#525252",
+  danger: "#E0555A",
+  ok: "#2FB89A",
+};
+
+// Campo com ícone à esquerda e foco branco.
+function LoginField({ icon: Icon, label, type = "text", value, onChange, placeholder, right, autoComplete }) {
+  const [focus, setFocus] = useState(false);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {label && (
+        <label style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: P.muted }}>
+          {label}
+        </label>
+      )}
+      <div style={{ position: "relative" }}>
+        <Icon size={20} color={P.muted} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setFocus(true)}
+          onBlur={() => setFocus(false)}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+            background: P.inputBg,
+            border: `1px solid ${focus ? P.white : P.hairline}`,
+            boxShadow: focus ? `0 0 0 1px ${P.white}` : "none",
+            borderRadius: 8,
+            padding: `12px ${right ? 44 : 16}px 12px 40px`,
+            color: P.white,
+            fontSize: 14,
+            fontWeight: 500,
+            outline: "none",
+            transition: "border-color .2s, box-shadow .2s",
+          }}
+        />
+        {right && <div style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)" }}>{right}</div>}
+      </div>
+    </div>
+  );
+}
+
+export default function Login({ onEnter }) {
+  const [mode, setMode] = useState("signin"); // "signin" | "signup"
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [pass, setPass] = useState("");
+  const [show, setShow] = useState(false);
+  const [err, setErr] = useState("");
+  const [ok, setOk] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [btnHover, setBtnHover] = useState(false);
+  const [secHover, setSecHover] = useState(false);
+
+  const isSignup = mode === "signup";
+
+  const reset = () => { setErr(""); setOk(""); };
+  const switchMode = (next) => { reset(); setPass(""); setMode(next); };
+
+  async function handleSignIn() {
+    reset();
+    if (!email || !pass) return setErr("Informe e-mail e senha.");
+    setLoading(true);
+    try {
+      await signIn(email, pass);
+      onEnter();
+    } catch (e) {
+      console.error("Falha no login:", e);
+      setErr(e?.message || "Não foi possível entrar. Verifique suas credenciais.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSignUp() {
+    reset();
+    if (!name || !email || !pass) return setErr("Preencha nome, e-mail e senha.");
+    if (pass.length < 6) return setErr("A senha precisa ter ao menos 6 caracteres.");
+    setLoading(true);
+    try {
+      const { needsConfirmation } = await signUp(name, email, pass);
+      if (needsConfirmation) {
+        setOk("Conta criada! Enviamos um e-mail de confirmação — confirme para entrar.");
+        setMode("signin");
+      } else {
+        onEnter();
+      }
+    } catch (e) {
+      console.error("Falha no cadastro:", e);
+      setErr(e?.message || "Não foi possível criar a conta.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const submit = isSignup ? handleSignUp : handleSignIn;
+
+  return (
+    <div style={{ ...font, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 24px", background: P.void, color: P.white, overflow: "hidden" }}>
+      <main style={{ width: "100%", maxWidth: 440, display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <header style={{ marginBottom: 16, display: "flex", justifyContent: "center" }}>
+          <Logo center size="lg" />
+        </header>
+
+        <section style={{ position: "relative", width: "100%", background: P.glass, backdropFilter: "blur(20px)", border: `1px solid ${P.hairline}`, borderRadius: 12, padding: 40, boxShadow: "0 30px 80px rgba(0,0,0,0.55)" }}>
+          {isSignup && (
+            <button
+              onClick={() => switchMode("signin")}
+              aria-label="Voltar ao login"
+              style={{ position: "absolute", top: 20, left: 20, display: "grid", placeItems: "center", width: 34, height: 34, borderRadius: 9, background: P.inputBg, border: `1px solid ${P.hairline}`, color: P.muted, cursor: "pointer" }}
+            >
+              <ArrowLeft size={17} />
+            </button>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {isSignup && (
+              <LoginField icon={User} label="Nome completo" value={name} onChange={setName} placeholder="Seu nome" autoComplete="name" />
+            )}
+
+            <LoginField icon={User} label="E-mail ou Usuário" value={email} onChange={setEmail} placeholder="exemplo@pokersync.com" autoComplete="username" />
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: P.muted }}>Senha</span>
+                {!isSignup && <a href="#" style={{ fontSize: 12, color: P.muted, textDecoration: "none" }}>Esqueci minha senha</a>}
+              </div>
+              <LoginField
+                icon={Lock}
+                type={show ? "text" : "password"}
+                value={pass}
+                onChange={setPass}
+                placeholder="••••••••"
+                autoComplete={isSignup ? "new-password" : "current-password"}
+                right={
+                  <button type="button" onClick={() => setShow((s) => !s)} aria-label="Mostrar senha" style={{ background: "none", border: 0, color: P.muted, cursor: "pointer", display: "grid", placeItems: "center" }}>
+                    {show ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                }
+              />
+            </div>
+
+            {err && <p style={{ color: P.danger, fontSize: 12, margin: 0 }}>{err}</p>}
+            {ok && <p style={{ color: P.ok, fontSize: 12, margin: 0 }}>{ok}</p>}
+
+            <button
+              onClick={submit}
+              disabled={loading}
+              onMouseEnter={() => setBtnHover(true)}
+              onMouseLeave={() => setBtnHover(false)}
+              style={{ width: "100%", marginTop: 4, padding: "16px", borderRadius: 8, border: 0, background: btnHover && !loading ? "#f0f0f0" : P.white, color: P.inputBg, fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", cursor: loading ? "default" : "pointer", boxShadow: "0 4px 14px rgba(255,255,255,0.05)", transform: btnHover && !loading ? "translateY(-1px)" : "none", transition: "background .3s, transform .3s", opacity: loading ? 0.8 : 1 }}
+            >
+              {loading ? (isSignup ? "Criando…" : "Verificando…") : isSignup ? "Criar conta" : "Acessar Dashboard"}
+            </button>
+          </div>
+
+          <div style={{ position: "relative", margin: "32px 0" }}>
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center" }}>
+              <span style={{ width: "100%", borderTop: `1px solid ${P.hairline}` }} />
+            </div>
+            <div style={{ position: "relative", display: "flex", justifyContent: "center" }}>
+              <span style={{ background: P.void, padding: "0 8px", fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: P.muted }}>Ou</span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => switchMode(isSignup ? "signin" : "signup")}
+            onMouseEnter={() => setSecHover(true)}
+            onMouseLeave={() => setSecHover(false)}
+            style={{ width: "100%", padding: "12px", borderRadius: 8, background: secHover ? "rgba(255,255,255,0.06)" : "transparent", border: `1px solid ${P.hairline}`, color: P.white, fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", cursor: "pointer", transition: "background .2s" }}
+          >
+            {isSignup ? "Já tenho conta" : "Criar conta"}
+          </button>
+        </section>
+      </main>
+    </div>
+  );
+}
