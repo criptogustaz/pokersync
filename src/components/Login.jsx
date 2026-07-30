@@ -121,6 +121,18 @@ export default function Login({ onEnter, onSignUpSuccess, initialMode = "signin"
 
   return (
     <div style={{ ...font, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 24px", background: P.void, color: P.white, overflow: "hidden" }}>
+      {/* Animação sutil da logo — loop contínuo monocromático */}
+      <style>{`
+        @keyframes pokersyncLogoPulse {
+          0%   { opacity: 1;    filter: brightness(1); }
+          50%  { opacity: 0.72; filter: brightness(0.88); }
+          100% { opacity: 1;    filter: brightness(1); }
+        }
+        .pokersync-logo {
+          animation: pokersyncLogoPulse 3s ease-in-out infinite;
+        }
+      `}</style>
+
       <main style={{ width: "100%", maxWidth: 460, display: "flex", flexDirection: "column", alignItems: "center" }}>
         <section style={{ position: "relative", width: "100%", background: P.glass, backdropFilter: "blur(20px)", border: `1px solid ${P.hairline}`, borderRadius: 12, padding: "32px 40px 40px", boxShadow: "0 30px 80px rgba(0,0,0,0.55)" }}>
           {isSignup && (
@@ -133,11 +145,12 @@ export default function Login({ onEnter, onSignUpSuccess, initialMode = "signin"
             </button>
           )}
 
-          {/* Logo — PNG transparente, integrada ao card */}
+          {/* Logo — PNG transparente, animação sutil em loop */}
           <img
             src={logoUrl}
             alt="PokerSync"
-            style={{ display: "block", width: 220, maxWidth: "80%", height: "auto", objectFit: "contain", margin: "4px auto 24px" }}
+            className="pokersync-logo"
+            style={{ display: "block", width: 280, maxWidth: "88%", height: "auto", objectFit: "contain", margin: "4px auto 24px" }}
           />
 
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -178,7 +191,7 @@ export default function Login({ onEnter, onSignUpSuccess, initialMode = "signin"
               disabled={loading}
               onMouseEnter={() => setBtnHover(true)}
               onMouseLeave={() => setBtnHover(false)}
-              style={{ width: "100%", marginTop: 4, padding: "18px", borderRadius: 8, border: 0, background: btnHover && !loading ? "#f0f0f0" : P.white, color: P.inputBg, fontSize: 14, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", cursor: loading ? "default" : "pointer", boxShadow: "0 4px 14px rgba(255,255,255,0.05)", transform: btnHover && !loading ? "translateY(-1px)" : "none", transition: "background .3s, transform .3s", opacity: loading ? 0.8 : 1 }}
+              style={{ width: "100%", marginTop: 4, padding: "13px", borderRadius: 8, border: 0, background: btnHover && !loading ? "#f0f0f0" : P.white, color: P.inputBg, fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", cursor: loading ? "default" : "pointer", boxShadow: "0 4px 14px rgba(255,255,255,0.05)", transform: btnHover && !loading ? "translateY(-1px)" : "none", transition: "background .3s, transform .3s", opacity: loading ? 0.8 : 1 }}
             >
               {loading ? (isSignup ? "Criando…" : "Verificando…") : isSignup ? "Criar conta" : "Acessar Dashboard"}
             </button>
@@ -197,7 +210,7 @@ export default function Login({ onEnter, onSignUpSuccess, initialMode = "signin"
             onClick={() => switchMode(isSignup ? "signin" : "signup")}
             onMouseEnter={() => setSecHover(true)}
             onMouseLeave={() => setSecHover(false)}
-            style={{ width: "100%", padding: "14px", borderRadius: 8, background: secHover ? "rgba(255,255,255,0.06)" : "transparent", border: `1px solid ${P.hairline}`, color: P.white, fontSize: 14, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer", transition: "background .2s" }}
+            style={{ width: "100%", padding: "11px", borderRadius: 8, background: secHover ? "rgba(255,255,255,0.06)" : "transparent", border: `1px solid ${P.hairline}`, color: P.white, fontSize: 12, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer", transition: "background .2s" }}
           >
             {isSignup ? "Já tenho conta" : "Criar conta"}
           </button>

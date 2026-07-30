@@ -80,8 +80,8 @@ export default function HeroPanel({ apelido, nome }) {
   const fmtBRL = (n) => `R$ ${Math.round(n).toLocaleString("pt-BR")}`;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* Banner com fichas P&B + apelido em branco */}
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {/* Banner mais compacto */}
       <div
         style={{
           position: "relative",
@@ -89,23 +89,23 @@ export default function HeroPanel({ apelido, nome }) {
           borderRadius: 14,
           border: `1px solid ${C.line}`,
           background: "#0a0a0a",
-          padding: "48px 40px 44px",
-          minHeight: 220,
+          padding: "28px 32px 24px",
+          minHeight: 140,
         }}
       >
         <ChipsBackground />
         <div style={{ position: "relative", zIndex: 1 }}>
-          <p style={{ fontSize: 12, letterSpacing: "0.2em", textTransform: "uppercase", color: C.sub, fontWeight: 700, margin: 0 }}>
+          <p style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: C.sub, fontWeight: 700, margin: 0 }}>
             Bem-vindo de volta
           </p>
-          <h1 style={{ fontSize: 44, fontWeight: 800, letterSpacing: "-0.02em", marginTop: 10, color: "#FFFFFF", lineHeight: 1.05 }}>
+          <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em", marginTop: 6, marginBottom: 0, color: "#FFFFFF", lineHeight: 1.05 }}>
             {displayName}
           </h1>
         </div>
       </div>
 
-      {/* Faixa de métricas fininhas — cards separados abaixo do banner */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+      {/* Faixa de métricas — cards mais finos */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
         <MetricPill
           dot={C.pos}
           label="Banca atual"
@@ -136,18 +136,18 @@ function MetricPill({ dot, label, value, hint, hintColor }) {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 14,
+        gap: 12,
         background: C.panel,
         border: `1px solid ${C.line}`,
         borderRadius: 10,
-        padding: "14px 20px",
+        padding: "10px 16px",
       }}
     >
       <div style={{ width: 7, height: 7, borderRadius: "50%", background: dot, flexShrink: 0 }} />
-      <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: C.sub, margin: 0, whiteSpace: "nowrap", textTransform: "uppercase" }}>{label}</p>
-      <p style={{ fontSize: 18, fontWeight: 700, color: C.text, margin: "0 0 0 auto", whiteSpace: "nowrap" }}>{value}</p>
+      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.sub, margin: 0, whiteSpace: "nowrap", textTransform: "uppercase" }}>{label}</p>
+      <p style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: "0 0 0 auto", whiteSpace: "nowrap" }}>{value}</p>
       {hint && (
-        <p style={{ fontSize: 12, color: hintColor || C.sub, margin: 0, whiteSpace: "nowrap", fontWeight: 500 }}>
+        <p style={{ fontSize: 11, color: hintColor || C.sub, margin: 0, whiteSpace: "nowrap", fontWeight: 500 }}>
           {hint}
         </p>
       )}
