@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { User, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { User, AtSign, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { font } from "./theme.js";
-import logoUrl from "../assets/pokersync-logo.jpg";
+import logoUrl from "../assets/pokersync-logo.png";
 import { signIn, signUp } from "../services/authService.js";
 
 // Paleta local — design monocromático (preto puro / branco).
@@ -12,7 +12,6 @@ const P = {
   hairline: "rgba(255,255,255,0.08)",
   white: "#ffffff",
   muted: "#c4c7c8",
-  placeholder: "#525252",
   danger: "#E0555A",
   ok: "#2FB89A",
 };
@@ -58,9 +57,10 @@ function LoginField({ icon: Icon, label, type = "text", value, onChange, placeho
   );
 }
 
-export default function Login({ onEnter }) {
-  const [mode, setMode] = useState("signin"); // "signin" | "signup"
+export default function Login({ onEnter, onSignUpSuccess, initialMode = "signin" }) {
+  const [mode, setMode] = useState(initialMode);
   const [name, setName] = useState("");
+  const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [show, setShow] = useState(false);
@@ -92,20 +92,26 @@ export default function Login({ onEnter }) {
 
   async function handleSignUp() {
     reset();
-    if (!name || !email || !pass) return setErr("Preencha nome, e-mail e senha.");
+    if (!name || !nickname || !email || !pass) {
+      return setErr("Preencha nome, apelido, e-mail e senha.");
+    }
     if (pass.length < 6) return setErr("A senha precisa ter ao menos 6 caracteres.");
     setLoading(true);
     try {
-      const { needsConfirmation } = await signUp(name, email, pass);
+      const { needsConfirmation } = await signUp({ name, nickname, email, password: pass });
       if (needsConfirmation) {
-        setOk("Conta criada! Enviamos um e-mail de confirmação — confirme para entrar.");
-        setMode("signin");
+        onSignUpSuccess?.(email);
       } else {
         onEnter();
       }
     } catch (e) {
       console.error("Falha no cadastro:", e);
-      setErr(e?.message || "Não foi possível criar a conta.");
+      const msg = e?.message?.toLowerCase() || "";
+      if (msg.includes("registered") || msg.includes("already")) {
+        setErr("Este e-mail já está cadastrado.");
+      } else {
+        setErr(e?.message || "Não foi possível criar a conta.");
+      }
     } finally {
       setLoading(false);
     }
@@ -127,16 +133,19 @@ export default function Login({ onEnter }) {
             </button>
           )}
 
-          {/* Logo — colada aos campos */}
+          {/* Logo — PNG transparente, integrada ao card */}
           <img
             src={logoUrl}
             alt="PokerSync"
-            style={{ display: "block", width: 230, maxWidth: "80%", height: "auto", objectFit: "contain", margin: "4px auto 24px" }}
+            style={{ display: "block", width: 220, maxWidth: "80%", height: "auto", objectFit: "contain", margin: "4px auto 24px" }}
           />
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {isSignup && (
-              <LoginField icon={User} label="Nome completo" value={name} onChange={setName} placeholder="Seu nome" autoComplete="name" />
+              <>
+                <LoginField icon={User} label="Nome completo" value={name} onChange={setName} placeholder="Seu nome" autoComplete="name" />
+                <LoginField icon={AtSign} label="Apelido" value={nickname} onChange={setNickname} placeholder="Como quer ser chamado" autoComplete="nickname" />
+              </>
             )}
 
             <LoginField icon={User} label="E-mail ou Usuário" value={email} onChange={setEmail} placeholder="exemplo@pokersync.com" autoComplete="username" />

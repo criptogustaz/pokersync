@@ -33,17 +33,21 @@ export async function signIn(email, password) {
   return data;
 }
 
-// Cadastro: guarda o nome em user_metadata. Retorna { needsConfirmation }.
-// Se o projeto exigir confirmação de e-mail, o usuário não loga na hora —
-// recebe um e-mail para confirmar antes do primeiro acesso.
-export async function signUp(name, email, password) {
+/**
+ * Cadastro no Supabase Auth.
+ * name e nickname vão em options.data (user_metadata) com chaves em PT
+ * (nome, apelido) para casar com a trigger que popula public.profiles.
+ */
+export async function signUp({ name, nickname, email, password }) {
   const { data, error } = await client().auth.signUp({
     email,
     password,
-    options: { data: { name } },
+    options: {
+      data: { nome: name, apelido: nickname },
+      emailRedirectTo: `${window.location.origin}/?confirmed=1`,
+    },
   });
   if (error) throw error;
-  // session === null quando a confirmação de e-mail está ativa.
   return { user: data.user, needsConfirmation: !data.session };
 }
 
@@ -51,31 +55,22 @@ export async function signOut() {
   await client().auth.signOut();
 }
 
-// Assina mudanças de sessão (login/logout/token refresh).
-// Uso: const { data: { subscription } } = onAuthChange((event, session) => { ... })
-// Retorna o mesmo shape do supabase.auth.onAuthStateChange (com data.subscription.unsubscribe).
-// Se o Supabase não estiver configurado, devolve um "assinatura fake" que pode ser cancelada sem erro.
-export function onAuthChange(callback) {
-  if (!isSupabaseConfigured || !supabase) {
-    return { data: { subscription: { unsubscribe() {} } } };
-  }
-  return supabase.auth.onAuthStateChange((event, session) => {
-    try {
-      callback(event, session);
-    } catch (e) {
-      console.error("onAuthChange callback error:", e);
-    }
-  });
+export function onAuthChange(cb) {
+  return client().auth.onAuthStateChange(cb);
 }
 
-// Retorna o usuário logado (nome em user_metadata + e-mail). Best-effort.
+// Retorna o usuário logado (nome/apelido em user_metadata + e-mail). Best-effort.
 export async function getCurrentUser() {
   if (!isSupabaseConfigured || !supabase) return null;
   try {
     const { data } = await supabase.auth.getUser();
     const u = data?.user;
     if (!u) return null;
-    return { name: u.user_metadata?.name || null, email: u.email || null };
+    return {
+      name: u.user_metadata?.nome || u.user_metadata?.name || null,
+      nickname: u.user_metadata?.apelido || u.user_metadata?.nickname || null,
+      email: u.email || null,
+    };
   } catch {
     return null;
   }

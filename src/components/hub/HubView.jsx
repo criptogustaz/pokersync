@@ -9,6 +9,8 @@ import {
   getPatente, xpForNextLevel,
 } from "../../services/xpService.js";
 
+const ACCENT = "#E0B24C"; // âmbar/dourado — coerente com o card "Hub" no dashboard
+
 const ICON_MAP = {
   "target": Target,
   "check-circle": CheckCircle2,
@@ -48,12 +50,8 @@ export default function HubView({ onBack }) {
     return () => { alive = false; };
   }, []);
 
-  if (loading) {
-    return <div style={{ ...font, padding: 40, color: C.sub, textAlign: "center" }}>Carregando Hub…</div>;
-  }
-  if (err) {
-    return <div style={{ ...font, padding: 40, color: "#f87171", textAlign: "center" }}>{err}</div>;
-  }
+  if (loading) return <div style={{ ...font, padding: 40, color: C.sub, textAlign: "center" }}>Carregando Hub…</div>;
+  if (err) return <div style={{ ...font, padding: 40, color: C.neg, textAlign: "center" }}>{err}</div>;
 
   const level = progress.level;
   const patente = getPatente(level);
@@ -62,65 +60,68 @@ export default function HubView({ onBack }) {
   const pct = Math.min(100, (xpCurrent / xpNeeded) * 100);
 
   const showingCatalog = missions.length === 0;
-  const dailyMissions = showingCatalog
-    ? catalog.filter((m) => m.kind === "daily")
-    : missions.filter((m) => m.missions?.kind === "daily");
-  const weeklyMissions = showingCatalog
-    ? catalog.filter((m) => m.kind === "weekly")
-    : missions.filter((m) => m.missions?.kind === "weekly");
-  const challengeMissions = showingCatalog
-    ? catalog.filter((m) => m.kind === "challenge")
-    : missions.filter((m) => m.missions?.kind === "challenge");
+  const grp = (kind) => showingCatalog
+    ? catalog.filter((m) => m.kind === kind)
+    : missions.filter((m) => m.missions?.kind === kind);
+  const dailyMissions = grp("daily");
+  const weeklyMissions = grp("weekly");
+  const challengeMissions = grp("challenge");
 
   return (
     <div style={{ ...font, display: "flex", flexDirection: "column", gap: 24, paddingBottom: 60 }}>
+      {/* Cabeçalho */}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button
           onClick={onBack}
           title="Voltar"
-          style={{ display: "grid", placeItems: "center", width: 38, height: 38, borderRadius: 10, background: C.panel2, border: `1px solid ${C.line}`, color: C.sub, cursor: "pointer" }}
+          style={{ display: "grid", placeItems: "center", width: 38, height: 38, borderRadius: 10, background: C.panel, border: `1px solid ${C.line}`, color: C.sub, cursor: "pointer" }}
         >
           <ArrowLeft size={18} />
         </button>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700 }}>Hub de Evolução</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: C.text, margin: 0 }}>Hub de Evolução</h1>
           <p style={{ fontSize: 13, color: C.sub, marginTop: 2 }}>
             Ganhe XP, mantenha a ofensiva e suba de patente.
           </p>
         </div>
       </div>
 
+      {/* Card de nível — mono com acento âmbar sutil */}
       <div
         style={{
-          borderRadius: 16,
-          padding: 28,
+          borderRadius: 14,
+          padding: 26,
           position: "relative",
           overflow: "hidden",
-          background: `linear-gradient(120deg, ${C.felt}, ${C.panel})`,
+          background: C.panel,
           border: `1px solid ${C.line}`,
         }}
       >
-        <div style={{ position: "absolute", right: -16, bottom: -24, opacity: 0.18, color: C.gold }}>
-          <Trophy size={160} strokeWidth={1} />
+        <div style={{ position: "absolute", inset: 0, background: `radial-gradient(ellipse at 100% 0%, ${ACCENT}12 0%, transparent 60%)`, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", right: -20, bottom: -28, opacity: 0.08, color: ACCENT }}>
+          <Trophy size={170} strokeWidth={1} />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 20, alignItems: "center", position: "relative", zIndex: 1 }}>
+        <div style={{ position: "relative", display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 22, alignItems: "center" }}>
+          {/* Distintivo de nível */}
           <div style={{
-            width: 76, height: 76, borderRadius: 16,
-            background: "rgba(201,162,39,0.15)",
-            border: `2px solid ${C.gold}`,
+            width: 80, height: 80, borderRadius: 16,
+            background: "#111",
+            border: `2px solid ${ACCENT}`,
             display: "grid", placeItems: "center",
-            color: C.gold,
+            color: ACCENT,
+            boxShadow: `0 0 0 4px rgba(224,178,76,0.08)`,
           }}>
-            <span style={{ fontSize: 32, fontWeight: 800, lineHeight: 1 }}>{level}</span>
+            <span style={{ fontSize: 34, fontWeight: 800, lineHeight: 1 }}>{level}</span>
           </div>
 
+          {/* Patente + barra de XP */}
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: C.goldSoft }}>
+            <p style={{ fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: C.sub, margin: 0, fontWeight: 700 }}>
               Nível {level}
             </p>
-            <h2 style={{ fontSize: 22, fontWeight: 700, marginTop: 2, color: C.text }}>{patente}</h2>
-            <div style={{ marginTop: 10 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 700, marginTop: 2, color: C.text, marginBottom: 0 }}>{patente}</h2>
+            <div style={{ marginTop: 12 }}>
               <div style={{
                 height: 8, borderRadius: 4,
                 background: "rgba(255,255,255,0.06)",
@@ -129,7 +130,7 @@ export default function HubView({ onBack }) {
               }}>
                 <div style={{
                   height: "100%", width: `${pct}%`,
-                  background: `linear-gradient(90deg, ${C.gold}, ${C.goldSoft || C.gold})`,
+                  background: `linear-gradient(90deg, ${ACCENT}, #F5D48C)`,
                   transition: "width .4s",
                 }} />
               </div>
@@ -140,14 +141,28 @@ export default function HubView({ onBack }) {
             </div>
           </div>
 
-          <div style={{ textAlign: "center", padding: "8px 12px", borderRadius: 12, background: "rgba(255,255,255,0.03)", border: `1px solid ${C.line}` }}>
-            <Flame size={22} color={progress.streak_days > 0 ? "#f97316" : C.sub} style={{ margin: "0 auto" }} />
-            <div style={{ fontSize: 22, fontWeight: 700, color: C.text, marginTop: 2 }}>{progress.streak_days}</div>
-            <div style={{ fontSize: 10, color: C.sub, textTransform: "uppercase", letterSpacing: ".08em" }}>Dias</div>
+          {/* Streak em destaque */}
+          <div style={{
+            textAlign: "center", padding: "10px 14px", borderRadius: 12,
+            background: "rgba(255,255,255,0.03)",
+            border: `1px solid ${C.line}`,
+            minWidth: 84,
+          }}>
+            <Flame size={22} color={progress.streak_days > 0 ? "#F97316" : C.sub} style={{ margin: "0 auto" }} />
+            <div style={{ fontSize: 22, fontWeight: 800, color: C.text, marginTop: 2 }}>{progress.streak_days}</div>
+            <div style={{ fontSize: 10, color: C.sub, textTransform: "uppercase", letterSpacing: ".1em", fontWeight: 700 }}>Dias</div>
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12, marginTop: 20, position: "relative", zIndex: 1 }}>
+        {/* Mini-estatísticas */}
+        <div style={{
+          position: "relative",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+          gap: 14, marginTop: 22,
+          paddingTop: 20,
+          borderTop: `1px solid ${C.line}`,
+        }}>
           <MiniStat icon={Zap} label="XP total" value={progress.xp_total.toLocaleString("pt-BR")} />
           <MiniStat icon={Target} label="Combo GTO" value={progress.combo_gto} />
           <MiniStat icon={Trophy} label="Recorde streak" value={progress.streak_best} />
@@ -156,12 +171,12 @@ export default function HubView({ onBack }) {
 
       {showingCatalog && (
         <div style={{
-          padding: "10px 14px", borderRadius: 10,
-          background: "rgba(201,162,39,0.08)",
-          border: `1px solid rgba(201,162,39,0.3)`,
-          fontSize: 12, color: C.goldSoft,
+          padding: "12px 16px", borderRadius: 10,
+          background: `rgba(224,178,76,0.08)`,
+          border: `1px solid rgba(224,178,76,0.25)`,
+          fontSize: 12, color: ACCENT, fontWeight: 500,
         }}>
-          As missões abaixo são um preview do catálogo. Em breve, você receberá missões diárias personalizadas ao seu nível.
+          As missões abaixo são um preview do catálogo. Em breve você receberá missões diárias personalizadas ao seu nível.
         </div>
       )}
 
@@ -180,11 +195,18 @@ export default function HubView({ onBack }) {
 
 function MiniStat({ icon: Icon, label, value }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <Icon size={14} color={C.sub} />
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div style={{
+        display: "grid", placeItems: "center",
+        width: 32, height: 32, borderRadius: 8,
+        background: "rgba(255,255,255,0.04)",
+        border: `1px solid ${C.line}`,
+      }}>
+        <Icon size={14} color={C.sub} />
+      </div>
       <div>
-        <div style={{ fontSize: 10, color: C.sub, textTransform: "uppercase", letterSpacing: ".06em" }}>{label}</div>
-        <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{value}</div>
+        <div style={{ fontSize: 10, color: C.sub, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 700 }}>{label}</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>{value}</div>
       </div>
     </div>
   );
@@ -193,11 +215,11 @@ function MiniStat({ icon: Icon, label, value }) {
 function MissionSection({ title, icon: Icon, missions, preview }) {
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <Icon size={16} color={C.gold} />
-        <h3 style={{ fontSize: 14, fontWeight: 700, color: C.text, textTransform: "uppercase", letterSpacing: ".06em" }}>{title}</h3>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+        <Icon size={16} color={ACCENT} />
+        <h3 style={{ fontSize: 12, fontWeight: 800, color: C.text, textTransform: "uppercase", letterSpacing: ".12em", margin: 0 }}>{title}</h3>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12 }}>
         {missions.map((item, idx) => (
           <MissionCard key={idx} item={item} preview={preview} />
         ))}
@@ -208,8 +230,7 @@ function MissionSection({ title, icon: Icon, missions, preview }) {
 
 function MissionCard({ item, preview }) {
   const m = preview ? item : item.missions;
-  const iconKey = m?.icon;
-  const Icon = ICON_MAP[iconKey] || Circle;
+  const Icon = ICON_MAP[m?.icon] || Circle;
   const goal = preview ? m.goal_base : item.goal_value;
   const progress = preview ? 0 : item.progress;
   const completed = !preview && item.status === "completed";
@@ -218,27 +239,29 @@ function MissionCard({ item, preview }) {
   return (
     <div style={{
       padding: 16, borderRadius: 12,
-      background: completed ? "rgba(74,222,128,0.06)" : C.panel2,
-      border: `1px solid ${completed ? "rgba(74,222,128,0.3)" : C.line}`,
-      opacity: preview ? 0.75 : 1,
+      background: completed ? "rgba(47,184,154,0.06)" : C.panel,
+      border: `1px solid ${completed ? "rgba(47,184,154,0.35)" : C.line}`,
+      opacity: preview ? 0.85 : 1,
+      transition: "border-color .2s",
     }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
         <div style={{
-          width: 36, height: 36, borderRadius: 10,
-          background: "rgba(201,162,39,0.12)",
+          width: 38, height: 38, borderRadius: 10,
+          background: completed ? "rgba(47,184,154,0.15)" : "rgba(224,178,76,0.10)",
+          border: `1px solid ${completed ? "rgba(47,184,154,0.4)" : "rgba(224,178,76,0.25)"}`,
           display: "grid", placeItems: "center",
           flexShrink: 0,
         }}>
-          <Icon size={18} color={C.gold} />
+          <Icon size={18} color={completed ? C.pos : ACCENT} strokeWidth={1.75} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-            <h4 style={{ fontSize: 14, fontWeight: 700, color: C.text, flex: 1 }}>{m.title}</h4>
-            <span style={{ fontSize: 11, color: C.gold, fontWeight: 700 }}>+{m.xp_reward} XP</span>
+            <h4 style={{ fontSize: 14, fontWeight: 700, color: C.text, flex: 1, margin: 0 }}>{m.title}</h4>
+            <span style={{ fontSize: 11, color: ACCENT, fontWeight: 800 }}>+{m.xp_reward} XP</span>
           </div>
-          <p style={{ fontSize: 12, color: C.sub, marginTop: 4, lineHeight: 1.4 }}>{m.description}</p>
+          <p style={{ fontSize: 12, color: C.sub, marginTop: 4, lineHeight: 1.4, margin: "4px 0 0" }}>{m.description}</p>
 
-          <div style={{ marginTop: 10 }}>
+          <div style={{ marginTop: 12 }}>
             <div style={{
               height: 6, borderRadius: 3,
               background: "rgba(255,255,255,0.06)",
@@ -246,11 +269,11 @@ function MissionCard({ item, preview }) {
             }}>
               <div style={{
                 height: "100%", width: `${pct}%`,
-                background: completed ? "#4ade80" : C.gold,
+                background: completed ? C.pos : ACCENT,
                 transition: "width .4s",
               }} />
             </div>
-            <div style={{ fontSize: 11, color: C.sub, marginTop: 4 }}>
+            <div style={{ fontSize: 11, color: C.sub, marginTop: 5, fontWeight: 500 }}>
               {progress} / {goal}
             </div>
           </div>
