@@ -1,68 +1,79 @@
 import React, { useState } from "react";
-import { Spade, Diamond, Eye, EyeOff, ArrowLeft } from "lucide-react";
-import { C, font } from "./theme.js";
-import Logo from "./Logo.jsx";
-import Field from "./Field.jsx";
+import { User, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { font } from "./theme.js";
+import logoUrl from "../assets/pokersync-logo.jpg";
 import { signIn, signUp } from "../services/authService.js";
 
-function Suit({ icon: Icon, style, size = 100, rot = 0 }) {
+// Paleta local — design monocromático (preto puro / branco).
+const P = {
+  void: "#000000",
+  glass: "rgba(30,30,30,0.6)",
+  inputBg: "#0e0e0e",
+  hairline: "rgba(255,255,255,0.08)",
+  white: "#ffffff",
+  muted: "#c4c7c8",
+  placeholder: "#525252",
+  danger: "#E0555A",
+  ok: "#2FB89A",
+};
+
+// Campo com ícone à esquerda e foco branco.
+function LoginField({ icon: Icon, label, type = "text", value, onChange, placeholder, right, autoComplete }) {
+  const [focus, setFocus] = useState(false);
   return (
-    <div style={{ position: "absolute", pointerEvents: "none", ...style }}>
-      <Icon size={size} color={C.line} style={{ opacity: 0.5, transform: `rotate(${rot}deg)` }} />
+    <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+      {label && (
+        <label style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: P.muted }}>
+          {label}
+        </label>
+      )}
+      <div style={{ position: "relative" }}>
+        <Icon size={22} color={P.muted} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={() => setFocus(true)}
+          onBlur={() => setFocus(false)}
+          placeholder={placeholder}
+          autoComplete={autoComplete}
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+            background: P.inputBg,
+            border: `1px solid ${focus ? P.white : P.hairline}`,
+            boxShadow: focus ? `0 0 0 1px ${P.white}` : "none",
+            borderRadius: 8,
+            padding: `14px ${right ? 48 : 18}px 14px 46px`,
+            color: P.white,
+            fontSize: 16,
+            fontWeight: 500,
+            outline: "none",
+            transition: "border-color .2s, box-shadow .2s",
+          }}
+        />
+        {right && <div style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)" }}>{right}</div>}
+      </div>
     </div>
   );
 }
 
-function PrimaryButton({ onClick, loading, children }) {
-  const [hover, setHover] = useState(false);
-  return (
-    <button
-      onClick={onClick}
-      disabled={loading}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        width: "100%",
-        marginTop: 24,
-        borderRadius: 12,
-        padding: 12,
-        fontSize: 15,
-        fontWeight: 600,
-        border: 0,
-        cursor: loading ? "default" : "pointer",
-        color: C.accentText,
-        background: hover ? C.accent : C.gold,
-        boxShadow: hover ? "0 8px 26px rgba(0,0,0,0.55)" : "0 4px 14px rgba(0,0,0,0.4)",
-        transform: hover && !loading ? "translateY(-1px)" : "none",
-        transition: "all .3s",
-        opacity: loading ? 0.7 : 1,
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-export default function Login({ onEnter, onSignUpSuccess, initialMode = "signin" }) {
-  const [mode, setMode] = useState(initialMode);
-
+export default function Login({ onEnter }) {
+  const [mode, setMode] = useState("signin"); // "signin" | "signup"
   const [name, setName] = useState("");
-  const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [show, setShow] = useState(false);
-
   const [err, setErr] = useState("");
   const [ok, setOk] = useState("");
   const [loading, setLoading] = useState(false);
+  const [btnHover, setBtnHover] = useState(false);
+  const [secHover, setSecHover] = useState(false);
 
-  function reset() { setErr(""); setOk(""); }
+  const isSignup = mode === "signup";
 
-  function switchMode(next) {
-    reset();
-    setPass("");
-    setMode(next);
-  }
+  const reset = () => { setErr(""); setOk(""); };
+  const switchMode = (next) => { reset(); setPass(""); setMode(next); };
 
   async function handleSignIn() {
     reset();
@@ -81,161 +92,108 @@ export default function Login({ onEnter, onSignUpSuccess, initialMode = "signin"
 
   async function handleSignUp() {
     reset();
-    if (!name || !nickname || !email || !pass) {
-      return setErr("Preencha nome, apelido, e-mail e senha.");
-    }
+    if (!name || !email || !pass) return setErr("Preencha nome, e-mail e senha.");
     if (pass.length < 6) return setErr("A senha precisa ter ao menos 6 caracteres.");
-
     setLoading(true);
     try {
-      const { needsConfirmation } = await signUp({ name, nickname, email, password: pass });
+      const { needsConfirmation } = await signUp(name, email, pass);
       if (needsConfirmation) {
-        onSignUpSuccess?.(email);
+        setOk("Conta criada! Enviamos um e-mail de confirmação — confirme para entrar.");
+        setMode("signin");
       } else {
         onEnter();
       }
     } catch (e) {
       console.error("Falha no cadastro:", e);
-      const msg = e?.message?.toLowerCase() || "";
-      if (msg.includes("registered") || msg.includes("already")) {
-        setErr("Este e-mail já está cadastrado.");
-      } else {
-        setErr(e?.message || "Não foi possível criar a conta.");
-      }
+      setErr(e?.message || "Não foi possível criar a conta.");
     } finally {
       setLoading(false);
     }
   }
 
-  const isSignup = mode === "signup";
+  const submit = isSignup ? handleSignUp : handleSignIn;
 
   return (
-    <div
-      style={{
-        ...font,
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-        position: "relative",
-        overflow: "hidden",
-        color: C.text,
-        background: `radial-gradient(700px circle at 25% 20%, rgba(201,162,39,0.10), transparent 55%),
-                     radial-gradient(680px circle at 78% 82%, rgba(15,61,46,0.55), transparent 60%),
-                     ${C.bg}`,
-      }}
-    >
-      <Suit icon={Spade} style={{ top: "12%", left: "14%" }} size={120} rot={-18} />
-      <Suit icon={Diamond} style={{ bottom: "14%", right: "16%" }} size={96} rot={14} />
-
-      <div
-        style={{
-          position: "relative",
-          width: "100%",
-          maxWidth: 400,
-          borderRadius: 16,
-          padding: 32,
-          background: "rgba(22,24,29,0.72)",
-          backdropFilter: "blur(16px)",
-          border: `1px solid ${C.line}`,
-          boxShadow: "0 30px 80px rgba(0,0,0,0.55)",
-        }}
-      >
-        {isSignup && (
-          <button
-            onClick={() => switchMode("signin")}
-            aria-label="Voltar ao login"
-            style={{
-              position: "absolute",
-              top: 20,
-              left: 20,
-              display: "grid",
-              placeItems: "center",
-              width: 34,
-              height: 34,
-              borderRadius: 9,
-              background: C.panel2,
-              border: `1px solid ${C.line}`,
-              color: C.sub,
-              cursor: "pointer",
-            }}
-          >
-            <ArrowLeft size={17} />
-          </button>
-        )}
-
-        <Logo center />
-        <p style={{ textAlign: "center", margin: "8px 0 28px", fontSize: 13, color: C.sub }}>
-          {isSignup ? "Crie sua conta para começar a treinar." : "Treino de poker GTO. Entre para continuar."}
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ ...font, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 24px", background: P.void, color: P.white, overflow: "hidden" }}>
+      <main style={{ width: "100%", maxWidth: 460, display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <section style={{ position: "relative", width: "100%", background: P.glass, backdropFilter: "blur(20px)", border: `1px solid ${P.hairline}`, borderRadius: 12, padding: "32px 40px 40px", boxShadow: "0 30px 80px rgba(0,0,0,0.55)" }}>
           {isSignup && (
-            <>
-              <Field label="Nome" value={name} onChange={setName} />
-              <Field label="Apelido" value={nickname} onChange={setNickname} />
-            </>
+            <button
+              onClick={() => switchMode("signin")}
+              aria-label="Voltar ao login"
+              style={{ position: "absolute", top: 20, left: 20, display: "grid", placeItems: "center", width: 36, height: 36, borderRadius: 9, background: P.inputBg, border: `1px solid ${P.hairline}`, color: P.muted, cursor: "pointer" }}
+            >
+              <ArrowLeft size={18} />
+            </button>
           )}
-          <Field label="E-mail" value={email} onChange={setEmail} />
-          <Field
-            label="Senha"
-            type={show ? "text" : "password"}
-            value={pass}
-            onChange={setPass}
-            trailing={
-              <button
-                onClick={() => setShow((s) => !s)}
-                aria-label="Mostrar senha"
-                style={{ marginLeft: 8, background: "none", border: 0, color: C.sub, cursor: "pointer" }}
-              >
-                {show ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            }
+
+          {/* Logo — colada aos campos */}
+          <img
+            src={logoUrl}
+            alt="PokerSync"
+            style={{ display: "block", width: 230, maxWidth: "80%", height: "auto", objectFit: "contain", margin: "4px auto 24px" }}
           />
-        </div>
 
-        {err && <p style={{ color: C.negSoft, fontSize: 12, marginTop: 10 }}>{err}</p>}
-        {ok && <p style={{ color: C.posSoft, fontSize: 12, marginTop: 10 }}>{ok}</p>}
+          <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+            {isSignup && (
+              <LoginField icon={User} label="Nome completo" value={name} onChange={setName} placeholder="Seu nome" autoComplete="name" />
+            )}
 
-        {!isSignup && (
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
-            <a href="#" style={{ fontSize: 12, color: C.sub, textDecoration: "none" }}>
-              Esqueci minha senha
-            </a>
+            <LoginField icon={User} label="E-mail ou Usuário" value={email} onChange={setEmail} placeholder="exemplo@pokersync.com" autoComplete="username" />
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: P.muted }}>Senha</span>
+                {!isSignup && <a href="#" style={{ fontSize: 14, color: P.muted, textDecoration: "none" }}>Esqueci minha senha</a>}
+              </div>
+              <LoginField
+                icon={Lock}
+                type={show ? "text" : "password"}
+                value={pass}
+                onChange={setPass}
+                placeholder="••••••••"
+                autoComplete={isSignup ? "new-password" : "current-password"}
+                right={
+                  <button type="button" onClick={() => setShow((s) => !s)} aria-label="Mostrar senha" style={{ background: "none", border: 0, color: P.muted, cursor: "pointer", display: "grid", placeItems: "center" }}>
+                    {show ? <EyeOff size={22} /> : <Eye size={22} />}
+                  </button>
+                }
+              />
+            </div>
+
+            {err && <p style={{ color: P.danger, fontSize: 14, margin: 0 }}>{err}</p>}
+            {ok && <p style={{ color: P.ok, fontSize: 14, margin: 0 }}>{ok}</p>}
+
+            <button
+              onClick={submit}
+              disabled={loading}
+              onMouseEnter={() => setBtnHover(true)}
+              onMouseLeave={() => setBtnHover(false)}
+              style={{ width: "100%", marginTop: 4, padding: "18px", borderRadius: 8, border: 0, background: btnHover && !loading ? "#f0f0f0" : P.white, color: P.inputBg, fontSize: 14, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", cursor: loading ? "default" : "pointer", boxShadow: "0 4px 14px rgba(255,255,255,0.05)", transform: btnHover && !loading ? "translateY(-1px)" : "none", transition: "background .3s, transform .3s", opacity: loading ? 0.8 : 1 }}
+            >
+              {loading ? (isSignup ? "Criando…" : "Verificando…") : isSignup ? "Criar conta" : "Acessar Dashboard"}
+            </button>
           </div>
-        )}
 
-        <PrimaryButton onClick={isSignup ? handleSignUp : handleSignIn} loading={loading}>
-          {loading
-            ? isSignup ? "Criando…" : "Entrando…"
-            : isSignup ? "Criar conta" : "Entrar"}
-        </PrimaryButton>
+          <div style={{ position: "relative", margin: "28px 0" }}>
+            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center" }}>
+              <span style={{ width: "100%", borderTop: `1px solid ${P.hairline}` }} />
+            </div>
+            <div style={{ position: "relative", display: "flex", justifyContent: "center" }}>
+              <span style={{ background: P.glass, padding: "0 10px", fontSize: 13, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: P.muted }}>Ou</span>
+            </div>
+          </div>
 
-        <div style={{ textAlign: "center", marginTop: 18, fontSize: 13, color: C.sub }}>
-          {isSignup ? (
-            <>
-              Já tem conta?{" "}
-              <button
-                onClick={() => switchMode("signin")}
-                style={{ background: "none", border: 0, color: C.gold, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
-              >
-                Entrar
-              </button>
-            </>
-          ) : (
-            <>
-              Não tem conta?{" "}
-              <button
-                onClick={() => switchMode("signup")}
-                style={{ background: "none", border: 0, color: C.gold, cursor: "pointer", fontSize: 13, fontWeight: 600 }}
-              >
-                Criar nova conta
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+          <button
+            onClick={() => switchMode(isSignup ? "signin" : "signup")}
+            onMouseEnter={() => setSecHover(true)}
+            onMouseLeave={() => setSecHover(false)}
+            style={{ width: "100%", padding: "14px", borderRadius: 8, background: secHover ? "rgba(255,255,255,0.06)" : "transparent", border: `1px solid ${P.hairline}`, color: P.white, fontSize: 14, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", cursor: "pointer", transition: "background .2s" }}
+          >
+            {isSignup ? "Já tenho conta" : "Criar conta"}
+          </button>
+        </section>
+      </main>
     </div>
   );
 }
