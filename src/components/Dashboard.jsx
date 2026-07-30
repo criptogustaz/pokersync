@@ -7,6 +7,7 @@ import ProfileMenu from "./ProfileMenu.jsx";
 import NotificationsMenu from "./NotificationsMenu.jsx";
 import HelpMenu from "./HelpMenu.jsx";
 import HeroPanel from "./HeroPanel.jsx";
+import ProgressStrip from "./ProgressStrip.jsx";
 import BankrollView from "./bankroll/BankrollView.jsx";
 import DrillView from "./drill/DrillView.jsx";
 import HubView from "./hub/HubView.jsx";
@@ -159,13 +160,15 @@ export default function Dashboard({ onLogout }) {
           <HeroPanel apelido={profile.apelido} nome={profile.nome} />
 
           <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <p style={{ fontSize: 16, fontWeight: 600, color: C.sub, margin: 0, letterSpacing: "0.02em" }}>Módulos</p>
+            <p style={{ fontSize: 16, fontWeight: 600, color: C.sub, margin: 0, letterSpacing: "0.02em" }}>Módulos Principais</p>
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
               {modules.map(({ key, ...mod }) => (
                 <ModuleCard key={key} {...mod} />
               ))}
             </div>
           </section>
+
+          <ProgressStrip />
         </main>
       )}
     </div>
