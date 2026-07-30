@@ -1,156 +1,180 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { Flame, Sparkles } from "lucide-react";
 import { C } from "./theme.js";
-import { fetchSessions, fetchSettings } from "../services/bankrollService.js";
-import { aggregate } from "../bankroll/calc.js";
 
-// Fundo decorativo — fichas de poker empilhadas em P&B (SVG inline).
-function ChipsBackground() {
-  const Chip = ({ cx, cy, r, tone = 1 }) => {
-    const grad = `chip-${cx}-${cy}`;
-    return (
-      <g>
-        <defs>
-          <radialGradient id={grad} cx="35%" cy="35%">
-            <stop offset="0%"  stopColor="#3a3a3a" />
-            <stop offset="60%" stopColor="#1a1a1a" />
-            <stop offset="100%" stopColor="#0a0a0a" />
-          </radialGradient>
-        </defs>
-        <circle cx={cx} cy={cy} r={r} fill={`url(#${grad})`} opacity={tone} />
-        <circle cx={cx} cy={cy} r={r * 0.72} fill="none" stroke="#fff" strokeWidth="1.5" strokeDasharray="4 6" opacity="0.35" />
-        {Array.from({ length: 8 }).map((_, i) => {
-          const a = (i * Math.PI) / 4;
-          const x1 = cx + Math.cos(a) * (r - 6);
-          const y1 = cy + Math.sin(a) * (r - 6);
-          const x2 = cx + Math.cos(a) * r;
-          const y2 = cy + Math.sin(a) * r;
-          return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.4" />;
-        })}
-      </g>
-    );
-  };
+/**
+ * Chip decorativo — círculo com borda tracejada + inner ring sutil.
+ * Reproduz os "poker chips" abstratos do layout v0.
+ */
+function Chip({ size, style }) {
   return (
-    <svg viewBox="0 0 800 260" preserveAspectRatio="xMaxYMid slice" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.75, pointerEvents: "none" }}>
-      <Chip cx={620} cy={150} r={90} />
-      <Chip cx={720} cy={90}  r={70} tone={0.9} />
-      <Chip cx={560} cy={70}  r={55} tone={0.8} />
-      <Chip cx={740} cy={210} r={62} tone={0.85} />
-      <Chip cx={470} cy={160} r={48} tone={0.7} />
-    </svg>
-  );
-}
-
-export default function HeroPanel({ apelido, nome }) {
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState({
-    bankroll: 0,
-    profit: 0,
-    roi: 0,
-    itm: 0,
-    tourneyCount: 0,
-    totalSessions: 0,
-  });
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const [sessions, settings] = await Promise.all([fetchSessions(), fetchSettings()]);
-        const agg = aggregate(sessions);
-        setData({
-          bankroll: (Number(settings.bankroll) || 0) + agg.profit,
-          profit: agg.profit,
-          roi: agg.roi || 0,
-          itm: agg.itm || 0,
-          tourneyCount: agg.tourneyCount || 0,
-          totalSessions: sessions.length,
-        });
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  const displayName = (apelido && apelido.trim())
-    || (nome && nome.split(" ")[0])
-    || "Jogador";
-
-  const profitPositive = data.profit >= 0;
-  const fmtBRL = (n) => `R$ ${Math.round(n).toLocaleString("pt-BR")}`;
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {/* Banner mais compacto */}
-      <div
-        style={{
-          position: "relative",
-          overflow: "hidden",
-          borderRadius: 14,
-          border: `1px solid ${C.line}`,
-          background: "#0a0a0a",
-          padding: "28px 32px 24px",
-          minHeight: 140,
-        }}
-      >
-        <ChipsBackground />
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <p style={{ fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: C.sub, fontWeight: 700, margin: 0 }}>
-            Bem-vindo de volta
-          </p>
-          <h1 style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.02em", marginTop: 6, marginBottom: 0, color: "#FFFFFF", lineHeight: 1.05 }}>
-            {displayName}
-          </h1>
-        </div>
-      </div>
-
-      {/* Faixa de métricas — cards mais finos */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-        <MetricPill
-          dot={C.pos}
-          label="Banca atual"
-          value={loading ? "…" : fmtBRL(data.bankroll)}
-          hint={data.totalSessions > 0 ? `${data.totalSessions} sessões` : "sem dados ainda"}
-        />
-        <MetricPill
-          dot={profitPositive ? C.pos : C.neg}
-          label="Resultado"
-          value={loading ? "…" : `${profitPositive ? "+" : ""}${fmtBRL(data.profit)}`}
-          hint={loading ? "" : `${data.roi.toFixed(1)}% ROI`}
-          hintColor={profitPositive ? C.pos : C.neg}
-        />
-        <MetricPill
-          dot={C.warn}
-          label="ITM (torneios)"
-          value={loading ? "…" : `${data.itm.toFixed(0)}%`}
-          hint={data.tourneyCount > 0 ? `${data.tourneyCount} torneios` : "sem torneios ainda"}
-        />
-      </div>
-    </div>
-  );
-}
-
-function MetricPill({ dot, label, value, hint, hintColor }) {
-  return (
-    <div
+    <span
+      aria-hidden
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        background: C.panel,
-        border: `1px solid ${C.line}`,
-        borderRadius: 10,
-        padding: "10px 16px",
+        position: "absolute",
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        border: "1px dashed rgba(255,255,255,0.15)",
+        ...style,
       }}
     >
-      <div style={{ width: 7, height: 7, borderRadius: "50%", background: dot, flexShrink: 0 }} />
-      <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.14em", color: C.sub, margin: 0, whiteSpace: "nowrap", textTransform: "uppercase" }}>{label}</p>
-      <p style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: "0 0 0 auto", whiteSpace: "nowrap" }}>{value}</p>
-      {hint && (
-        <p style={{ fontSize: 11, color: hintColor || C.sub, margin: 0, whiteSpace: "nowrap", fontWeight: 500 }}>
-          {hint}
+      <span
+        style={{
+          position: "absolute",
+          inset: 8,
+          borderRadius: "50%",
+          border: "1px solid rgba(255,255,255,0.06)",
+          background: "linear-gradient(135deg, rgba(255,255,255,0.05), transparent)",
+        }}
+      />
+    </span>
+  );
+}
+
+export default function HeroPanel({ apelido, nome, streakDays = 4, patente = "Prata II" }) {
+  const displayName =
+    (apelido && apelido.trim()) || (nome && nome.split(" ")[0]) || "Jogador";
+
+  return (
+    <section
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: 16,
+        border: `1px solid ${C.line}`,
+        background: C.panel,
+        padding: "24px 28px",
+        minHeight: 150,
+      }}
+    >
+      {/* Glow ambiente (canto superior direito) */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          right: -64,
+          top: -96,
+          width: 320,
+          height: 320,
+          borderRadius: "50%",
+          background: "rgba(255,255,255,0.06)",
+          filter: "blur(64px)",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Grid de pontinhos ao fundo */}
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          inset: 0,
+          opacity: 0.4,
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)",
+          backgroundSize: "22px 22px",
+          pointerEvents: "none",
+        }}
+      />
+
+      {/* Chips decorativos — escondidos em telas pequenas */}
+      <div
+        aria-hidden
+        className="pokersync-hero-chips"
+        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+      >
+        <Chip size={190} style={{ right: 24, top: "50%", transform: "translateY(-50%)", opacity: 0.7 }} />
+        <Chip size={130} style={{ right: 160, top: 24, opacity: 0.6 }} />
+        <Chip size={96}  style={{ right: 96, bottom: -24, opacity: 0.5 }} />
+        <Chip size={64}  style={{ right: 8,  top: 32, opacity: 0.4 }} />
+      </div>
+      <style>{`
+        @media (max-width: 640px) {
+          .pokersync-hero-chips { display: none; }
+        }
+      `}</style>
+
+      {/* Conteúdo */}
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <p
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.28em",
+            textTransform: "uppercase",
+            color: C.sub,
+            margin: 0,
+          }}
+        >
+          Bem-vindo de volta
         </p>
-      )}
-    </div>
+
+        <h1
+          style={{
+            fontSize: 40,
+            fontWeight: 800,
+            letterSpacing: "-0.02em",
+            marginTop: 6,
+            marginBottom: 0,
+            color: "#FFFFFF",
+            lineHeight: 1.05,
+          }}
+        >
+          {displayName}
+        </h1>
+
+        <p
+          style={{
+            marginTop: 10,
+            marginBottom: 0,
+            maxWidth: 420,
+            fontSize: 13,
+            lineHeight: 1.5,
+            color: C.sub,
+          }}
+        >
+          Você está em uma sequência sólida. Continue treinando ranges para
+          manter a evolução constante.
+        </p>
+
+        <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.2)",
+              background: "rgba(255,255,255,0.06)",
+              padding: "4px 10px",
+              fontSize: 11,
+              fontWeight: 600,
+              color: C.text,
+            }}
+          >
+            <Flame size={13} />
+            Sequência de {streakDays} dias
+          </span>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              borderRadius: 999,
+              border: `1px solid ${C.line}`,
+              background: "rgba(255,255,255,0.03)",
+              padding: "4px 10px",
+              fontSize: 11,
+              fontWeight: 600,
+              color: C.sub,
+            }}
+          >
+            <Sparkles size={13} color={C.text} />
+            Patente {patente}
+          </span>
+        </div>
+      </div>
+    </section>
   );
 }
