@@ -41,9 +41,7 @@ export default function ModuleCard({ icon: Icon, title, subtitle, accent = "#fff
         textAlign: "left",
       }}
     >
-      {/* linha de acento no topo (hover) */}
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: accent, borderRadius: "12px 12px 0 0", opacity: hov ? 1 : 0, transition: "opacity .25s" }} />
-      {/* glow suave do accent no hover */}
       <div style={{ position: "absolute", inset: 0, borderRadius: 12, background: `radial-gradient(ellipse at 50% -10%, ${accent}1A 0%, transparent 62%)`, opacity: hov ? 1 : 0, transition: "opacity .3s", pointerEvents: "none" }} />
 
       <div style={{ position: "relative", display: "flex", alignItems: "flex-start", justifyContent: "space-between", width: "100%" }}>
