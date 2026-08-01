@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Target, TrendingUp, Heart, Layers, Trophy } from "lucide-react";
+import { Target, TrendingUp, BookOpen, Layers, Trophy } from "lucide-react";
 import { C, font } from "./theme.js";
 import ModuleCard from "./ModuleCard.jsx";
 import Avatar from "./Avatar.jsx";
@@ -12,6 +12,7 @@ import ProgressStrip from "./ProgressStrip.jsx";
 import BankrollView from "./bankroll/BankrollView.jsx";
 import DrillView from "./drill/DrillView.jsx";
 import HubView from "./hub/HubView.jsx";
+import RevisorView from "./revisor/RevisorView.jsx";
 import { fetchProfile } from "../services/profileService.js";
 import { fetchProgress } from "../services/xpService.js";
 import logoUrl from "../assets/pokersync-logo-h.png";
@@ -22,6 +23,7 @@ const ACCENT = {
   gold:  "#E0B24C",
   amber: "#E0B24C",
   pink:  "#E0559E",
+  purple:"#A855F7",
 };
 
 function AvatarWithLevel({ profile, level, onClick }) {
@@ -80,7 +82,7 @@ export default function Dashboard({ onLogout }) {
   const modules = [
     { key: "drill",    icon: Target,     title: "Modo Treino",          subtitle: "Ranges e frequências GTO",   accent: ACCENT.green, tag: "ATIVO", available: true,  onClick: () => setView("drill") },
     { key: "bankroll", icon: TrendingUp, title: "Gestão de Banca",      subtitle: "Controle de risco e ROI",    accent: ACCENT.blue,                available: true,  onClick: () => setView("bankroll") },
-    { key: "hub",      icon: Trophy,     title: "Hub de Evolução",      subtitle: "Missões, XP e patentes",     accent: ACCENT.gold,  tag: "NOVO",  available: true,  onClick: () => setView("hub") },
+    { key: "revisor",  icon: BookOpen,   title: "Revisão de Mãos",      subtitle: "Análise técnica de jogadas", accent: ACCENT.purple,              available: true,  onClick: () => setView("revisor") },
     { key: "revisor",  icon: Heart,      title: "Revisão de Mãos",      subtitle: "Análise técnica de jogadas", accent: ACCENT.amber,               available: false },
     { key: "ranges",   icon: Layers,     title: "Construtor de Ranges", subtitle: "Mapeamento estratégico",     accent: ACCENT.pink,                available: false },
   ];
@@ -159,6 +161,10 @@ export default function Dashboard({ onLogout }) {
         <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 28px 0", width: "100%", boxSizing: "border-box" }}>
           <HubView onBack={goHome} />
         </div>
+      ) : view === "revisor" ? (
+  <div style={{ maxWidth: 1200, margin: "0 auto", padding: "24px 28px 0", width: "100%", boxSizing: "border-box" }}>
+    <RevisorView onBack={goHome} />
+  </div>
       ) : (
         <main
           style={{
