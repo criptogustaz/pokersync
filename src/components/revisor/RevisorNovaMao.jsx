@@ -1,31 +1,28 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { BookOpen, Tag, ImagePlus, X, Save, Play, Plus, Loader2 } from 'lucide-react';
-import { theme } from '../../theme';
-import { getCurrentUser } from '../../services/authService';
+import { useEffect, useMemo, useState } from "react";
+import { BookOpen, Tag, ImagePlus, X, Save, Play, Plus, Loader2 } from "lucide-react";
+import { getCurrentUser } from "../../services/authService";
 import {
   fetchTags,
   createUserTag,
   createReview,
   validateImage,
   registerReviewEvent,
-} from '../../revisor/handReviewService';
+} from "../../revisor/handReviewService";
 
-const ACCENT = '#A855F7';
+const ACCENT = "#A855F7";
 const MAX_IMAGES = 3;
 
-export default function RevisorNovaMao() {
-  const navigate = useNavigate();
+export default function RevisorNovaMao({ onSaved, onSavedAndReview, onCancel }) {
   const [userId, setUserId] = useState(null);
-  const [title, setTitle] = useState('');
-  const [freeText, setFreeText] = useState('');
-  const [handHistory, setHandHistory] = useState('');
+  const [title, setTitle] = useState("");
+  const [freeText, setFreeText] = useState("");
+  const [handHistory, setHandHistory] = useState("");
   const [tags, setTags] = useState([]);
   const [selectedTagIds, setSelectedTagIds] = useState([]);
-  const [newTagLabel, setNewTagLabel] = useState('');
+  const [newTagLabel, setNewTagLabel] = useState("");
   const [images, setImages] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -35,7 +32,7 @@ export default function RevisorNovaMao() {
         const t = await fetchTags();
         setTags(t);
       } catch (e) {
-        setError('Erro ao carregar etiquetas.');
+        setError("Erro ao carregar etiquetas.");
       }
     })();
   }, []);
@@ -62,9 +59,9 @@ export default function RevisorNovaMao() {
       const created = await createUserTag(userId, clean);
       setTags((prev) => [...prev, created]);
       setSelectedTagIds((prev) => [...prev, created.id]);
-      setNewTagLabel('');
+      setNewTagLabel("");
     } catch (e) {
-      setError(e.message || 'Erro ao criar etiqueta.');
+      setError(e.message || "Erro ao criar etiqueta.");
     }
   }
 
@@ -95,7 +92,7 @@ export default function RevisorNovaMao() {
   async function save(goToReview) {
     if (!userId || !canSave || saving) return;
     setSaving(true);
-    setError('');
+    setError("");
     try {
       const review = await createReview(userId, {
         title,
@@ -105,23 +102,23 @@ export default function RevisorNovaMao() {
         images: images.map((i) => i.file),
       });
 
-      // Dispara evento de XP: mão registrada
-      const xp = await registerReviewEvent('registered', review.id);
+      const xp = await registerReviewEvent("registered", review.id);
       if (xp?.xp_final) console.log(`+${xp.xp_final} XP (Registro)`);
 
-      navigate(goToReview ? `/revisor/${review.id}` : '/revisor');
+      if (goToReview) {
+        onSavedAndReview?.(review.id);
+      } else {
+        onSaved?.();
+      }
     } catch (e) {
-      setError(e.message || 'Erro ao salvar a mão.');
+      setError(e.message || "Erro ao salvar a mão.");
       setSaving(false);
     }
   }
 
   return (
-    <div style={S.page}>
-      <header style={S.header}>
-        <BookOpen size={20} color={ACCENT} />
-        <h1 style={S.title}>Nova Mão</h1>
-      </header>
+    <div>
+      <h2 style={{ fontSize: 18, marginTop: 0, marginBottom: 16 }}>Nova Mão</h2>
 
       <section style={S.section}>
         <label style={S.label}>Título (opcional)</label>
@@ -148,14 +145,14 @@ export default function RevisorNovaMao() {
           onChange={(e) => setHandHistory(e.target.value)}
           placeholder="Cole aqui o histórico da mão"
           rows={6}
-          style={{ ...S.textarea, fontFamily: 'monospace', fontSize: 12 }}
+          style={{ ...S.textarea, fontFamily: "monospace", fontSize: 12 }}
         />
       </section>
 
       <section style={S.section}>
         <div style={S.rowBetween}>
           <label style={S.label}>
-            <Tag size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+            <Tag size={14} style={{ marginRight: 6, verticalAlign: "middle" }} />
             Etiquetas
           </label>
           <span style={S.hint}>{selectedTagIds.length} selecionada(s)</span>
@@ -171,9 +168,9 @@ export default function RevisorNovaMao() {
                 onClick={() => toggleTag(t.id)}
                 style={{
                   ...S.tagChip,
-                  background: active ? ACCENT : 'transparent',
-                  borderColor: active ? ACCENT : '#333',
-                  color: active ? '#000' : '#fff',
+                  background: active ? ACCENT : "transparent",
+                  borderColor: active ? ACCENT : "#333",
+                  color: active ? "#000" : "#fff",
                 }}
               >
                 {t.label}
@@ -188,7 +185,7 @@ export default function RevisorNovaMao() {
             onChange={(e) => setNewTagLabel(e.target.value)}
             placeholder="Criar nova etiqueta"
             style={{ ...S.input, flex: 1 }}
-            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddNewTag())}
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddNewTag())}
           />
           <button type="button" onClick={handleAddNewTag} style={S.btnGhost}>
             <Plus size={16} />
@@ -220,12 +217,12 @@ export default function RevisorNovaMao() {
           {images.length < MAX_IMAGES && (
             <label style={S.imgAdd}>
               <ImagePlus size={22} color={ACCENT} />
-              <span style={{ fontSize: 12, marginTop: 6, color: '#999' }}>Adicionar</span>
+              <span style={{ fontSize: 12, marginTop: 6, color: "#999" }}>Adicionar</span>
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 multiple
-                style={{ display: 'none' }}
+                style={{ display: "none" }}
                 onChange={(e) => handleFiles(e.target.files)}
               />
             </label>
@@ -242,7 +239,7 @@ export default function RevisorNovaMao() {
           disabled={!canSave || saving}
           style={{ ...S.btnSecondary, opacity: !canSave || saving ? 0.5 : 1 }}
         >
-          {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
+          {saving ? <Loader2 size={16} /> : <Save size={16} />}
           Salvar e revisar depois
         </button>
         <button
@@ -251,7 +248,7 @@ export default function RevisorNovaMao() {
           disabled={!canSave || saving}
           style={{ ...S.btnPrimary, opacity: !canSave || saving ? 0.5 : 1 }}
         >
-          {saving ? <Loader2 size={16} className="spin" /> : <Play size={16} />}
+          {saving ? <Loader2 size={16} /> : <Play size={16} />}
           Salvar e começar revisão
         </button>
       </footer>
@@ -260,62 +257,56 @@ export default function RevisorNovaMao() {
 }
 
 const S = {
-  page: { maxWidth: 720, margin: '0 auto', padding: 20, color: '#fff' },
-  header: { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 },
-  title: { fontSize: 22, margin: 0, fontFamily: theme?.fonts?.heading || 'Space Grotesk, sans-serif' },
   section: {
-    background: '#111',
-    border: '1px solid #1e1e1e',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 14,
+    background: "#111", border: "1px solid #1e1e1e", borderRadius: 12,
+    padding: 16, marginBottom: 14,
   },
-  label: { display: 'block', fontSize: 13, color: '#bbb', marginBottom: 8 },
-  hint: { fontSize: 11, color: '#666' },
-  rowBetween: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
+  label: { display: "block", fontSize: 13, color: "#bbb", marginBottom: 8 },
+  hint: { fontSize: 11, color: "#666" },
+  rowBetween: { display: "flex", alignItems: "center", justifyContent: "space-between" },
   input: {
-    width: '100%', background: '#000', border: '1px solid #2a2a2a', color: '#fff',
-    borderRadius: 8, padding: '10px 12px', fontSize: 14, outline: 'none', boxSizing: 'border-box',
+    width: "100%", background: "#000", border: "1px solid #2a2a2a", color: "#fff",
+    borderRadius: 8, padding: "10px 12px", fontSize: 14, outline: "none", boxSizing: "border-box",
   },
   textarea: {
-    width: '100%', background: '#000', border: '1px solid #2a2a2a', color: '#fff',
-    borderRadius: 8, padding: 12, fontSize: 14, outline: 'none', boxSizing: 'border-box', resize: 'vertical',
+    width: "100%", background: "#000", border: "1px solid #2a2a2a", color: "#fff",
+    borderRadius: 8, padding: 12, fontSize: 14, outline: "none", boxSizing: "border-box", resize: "vertical",
   },
-  tagWrap: { display: 'flex', flexWrap: 'wrap', gap: 6 },
+  tagWrap: { display: "flex", flexWrap: "wrap", gap: 6 },
   tagChip: {
-    padding: '6px 10px', fontSize: 12, borderRadius: 999,
-    border: '1px solid #333', background: 'transparent', color: '#fff',
-    cursor: 'pointer', transition: 'all .15s',
+    padding: "6px 10px", fontSize: 12, borderRadius: 999,
+    border: "1px solid #333", background: "transparent", color: "#fff",
+    cursor: "pointer", transition: "all .15s",
   },
-  imgGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginTop: 4 },
-  imgTile: { position: 'relative', aspectRatio: '1 / 1', borderRadius: 10, overflow: 'hidden', background: '#000' },
-  imgPreview: { width: '100%', height: '100%', objectFit: 'cover' },
+  imgGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginTop: 4 },
+  imgTile: { position: "relative", aspectRatio: "1 / 1", borderRadius: 10, overflow: "hidden", background: "#000" },
+  imgPreview: { width: "100%", height: "100%", objectFit: "cover" },
   imgRemove: {
-    position: 'absolute', top: 6, right: 6, background: 'rgba(0,0,0,0.7)',
-    border: '1px solid #333', borderRadius: 999, color: '#fff', padding: 4, cursor: 'pointer', display: 'flex',
+    position: "absolute", top: 6, right: 6, background: "rgba(0,0,0,0.7)",
+    border: "1px solid #333", borderRadius: 999, color: "#fff", padding: 4, cursor: "pointer", display: "flex",
   },
   imgAdd: {
-    aspectRatio: '1 / 1', border: '1px dashed #333', borderRadius: 10,
-    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-    cursor: 'pointer', background: '#0a0a0a',
+    aspectRatio: "1 / 1", border: "1px dashed #333", borderRadius: 10,
+    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+    cursor: "pointer", background: "#0a0a0a",
   },
-  footer: { display: 'flex', gap: 10, marginTop: 20 },
+  footer: { display: "flex", gap: 10, marginTop: 20 },
   btnPrimary: {
-    flex: 1, background: ACCENT, color: '#000', border: 'none', borderRadius: 10,
-    padding: '12px 16px', fontWeight: 600, fontSize: 14, cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+    flex: 1, background: ACCENT, color: "#000", border: "none", borderRadius: 10,
+    padding: "12px 16px", fontWeight: 600, fontSize: 14, cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
   },
   btnSecondary: {
-    flex: 1, background: 'transparent', color: '#fff', border: '1px solid #333', borderRadius: 10,
-    padding: '12px 16px', fontSize: 14, cursor: 'pointer',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+    flex: 1, background: "transparent", color: "#fff", border: "1px solid #333", borderRadius: 10,
+    padding: "12px 16px", fontSize: 14, cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
   },
   btnGhost: {
-    background: 'transparent', color: '#fff', border: '1px solid #333', borderRadius: 8,
-    padding: '10px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center',
+    background: "transparent", color: "#fff", border: "1px solid #333", borderRadius: 8,
+    padding: "10px 12px", cursor: "pointer", display: "flex", alignItems: "center",
   },
   error: {
-    background: '#2a0f0f', border: '1px solid #7f1d1d', color: '#fca5a5',
+    background: "#2a0f0f", border: "1px solid #7f1d1d", color: "#fca5a5",
     padding: 10, borderRadius: 8, fontSize: 13, marginBottom: 10,
   },
 };
