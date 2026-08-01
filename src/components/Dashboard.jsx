@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Target, TrendingUp, BookOpen, Layers, Trophy } from "lucide-react";
+import { Target, TrendingUp, BookOpen, Heart, Layers, Trophy } from "lucide-react";
 import { C, font } from "./theme.js";
 import ModuleCard from "./ModuleCard.jsx";
 import Avatar from "./Avatar.jsx";
