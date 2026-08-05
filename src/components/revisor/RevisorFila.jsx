@@ -30,7 +30,7 @@ export default function RevisorFila({ onNova, onOpen }) {
   useEffect(() => {
     (async () => {
       const user = await getCurrentUser();
-      console.log("DEBUG getCurrentUser:", user);
+      console.log("DEBUG getCurrentUser:", JSON.stringify(user, null, 2));
       if (user) setUserId(user.id);
     })();
   }, []);
