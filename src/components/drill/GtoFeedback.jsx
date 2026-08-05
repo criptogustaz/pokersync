@@ -1,12 +1,15 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { Check, TrendingDown, Info } from "lucide-react";
 import { C } from "../theme.js";
 import { matchUserActionToGtoNode } from "../../engine/matchUserActionToGtoNode.js";
+import { getFeedbackMessage, formatSizing } from "../../engine/feedbackMessages.js";
 
-const VERDICT = {
-  PERFECT: { color: C.pos, bg: "rgba(34,197,94,0.10)", border: "rgba(34,197,94,0.4)", Icon: Check, label: "PERFECT" },
-  BLUNDER: { color: C.neg, bg: "rgba(239,68,68,0.10)", border: "rgba(239,68,68,0.4)", Icon: TrendingDown, label: "BLUNDER" },
-  UNKNOWN: { color: C.info, bg: "rgba(96,165,250,0.10)", border: "rgba(96,165,250,0.4)", Icon: Info, label: "—" },
+const VERDICT_STYLE = {
+  OTIMA: { color: C.pos, bg: "rgba(34,197,94,0.10)", border: "rgba(34,197,94,0.4)", Icon: Check },
+  ACEITAVEL: { color: C.goldSoft, bg: "rgba(234,179,8,0.10)", border: "rgba(234,179,8,0.4)", Icon: Check },
+  ERRO_LEVE: { color: C.goldSoft, bg: "rgba(234,179,8,0.10)", border: "rgba(234,179,8,0.4)", Icon: TrendingDown },
+  ERRO_GRAVE: { color: C.neg, bg: "rgba(239,68,68,0.10)", border: "rgba(239,68,68,0.4)", Icon: TrendingDown },
+  UNKNOWN: { color: C.info, bg: "rgba(96,165,250,0.10)", border: "rgba(96,165,250,0.4)", Icon: Info },
 };
 
 function Bar({ label, pct, color }) {
@@ -37,13 +40,30 @@ function actionLabel({ type, sizing }) {
   if (type === "FOLD") return "Fold";
   if (type === "CHECK") return "Check";
   if (type === "CALL") return "Call";
-  return `${type} ${sizing.toFixed(1)}`;
+  return `${type.charAt(0)}${type.slice(1).toLowerCase()} ${formatSizing(sizing)}`;
 }
 
 export default function GtoFeedback({ userAction, gtoNodes, heroCards, context, onResult }) {
   const result = matchUserActionToGtoNode(userAction, gtoNodes, heroCards);
-  const v = VERDICT[result.verdict] || VERDICT.UNKNOWN;
+  const v = VERDICT_STYLE[result.verdict] || VERDICT_STYLE.UNKNOWN;
   const { Icon } = v;
+
+  const chosenLabel = actionLabel({
+    type: (userAction.action || "").toUpperCase(),
+    sizing: userAction.sizing ?? 0,
+  });
+
+  // Escolhe o badge e o texto uma única vez por resultado, pra não trocar
+  // de frase a cada re-render do componente.
+  const feedback = useMemo(
+    () =>
+      getFeedbackMessage(result.verdict, {
+        topAction: result.topAction,
+        topFreq: result.topFreq,
+        chosenAction: chosenLabel,
+      }),
+    [result.verdict, result.topAction, result.topFreq, chosenLabel]
+  );
 
   // Notifica o pai uma única vez por resultado
   const reported = useRef(false);
@@ -84,24 +104,14 @@ export default function GtoFeedback({ userAction, gtoNodes, heroCards, context, 
       <div style={{ display: "flex", alignItems: "center", gap: 10, background: v.bg, border: `1px solid ${v.border}`, borderRadius: 12, padding: "12px 14px" }}>
         <Icon size={22} color={v.color} />
         <div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: v.color }}>{v.label}</div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: v.color }}>{feedback.badge}</div>
           <div style={{ fontSize: 12, color: C.sub }}>
-            Sua jogada: {Math.round((result.chosenFreq ?? 0) * 100)}% da mistura
+            Sua jogada apareceu em {Math.round((result.chosenFreq ?? 0) * 100)}% das vezes nessa estratégia
           </div>
         </div>
       </div>
       <div style={{ marginTop: 16, fontSize: 13, color: C.sub, lineHeight: 1.5 }}>
-        {result.verdict === "PERFECT" ? (
-          <>Sua ação faz parte relevante da mistura GTO para essa mão. Frequência da solução neste spot:</>
-        ) : (
-          <>
-            Ação com frequência baixa (ou nula) na mistura ideal. A jogada mais frequente para essa mão é{" "}
-            <strong style={{ color: C.text }}>
-              {result.topAction ? actionLabel(parseActionString(result.topAction)) : "—"}
-            </strong>{" "}
-            ({Math.round((result.topFreq ?? 0) * 100)}%):
-          </>
-        )}
+        {feedback.text}
       </div>
       <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
         {actions.map((raw, i) => {
