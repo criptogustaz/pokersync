@@ -1,26 +1,24 @@
 import React, { useState } from "react";
 import { Filter, X } from "lucide-react";
 
+// Só as dimensões que existem de verdade nos dados hoje (2.500 spots MTT 40bb ChipEV).
+// solution/format/stack não entram aqui porque têm valor único em todos os spots —
+// um filtro com 1 opção só não ajuda ninguém, só confunde.
 const SECTIONS = [
   {
-    key: "solution",
-    label: "Solution",
-    options: ["MTT", "Cash"],
-  },
-  {
-    key: "format",
-    label: "Format",
-    options: ["HeadsUP", "ChipEV", "ICM"],
-  },
-  {
-    key: "stack",
-    label: "Stack (BB)",
-    options: [5, 7, 10, 12, 14, 15, 18, 20, 23, 25, 30, 40, 50, 60, 80, 100],
-  },
-  {
     key: "position",
-    label: "Position",
-    options: ["UTG", "UTG+1", "MP1", "MP2", "HJ", "CO", "BU", "SB", "BB"],
+    label: "Posição",
+    options: ["BB", "BTN", "SB"],
+  },
+  {
+    key: "action",
+    label: "Situação",
+    options: ["vs Open", "3-Bet"],
+  },
+  {
+    key: "street",
+    label: "Rua",
+    options: ["Flop", "Turn", "River"],
   },
 ];
 
@@ -185,6 +183,9 @@ export default function FilterDrawer({ filters, onSet, onReset, activeCount }) {
 
         {/* Seções de filtros */}
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 18, lineHeight: 1.5 }}>
+            MTT · ChipEV · 40bb — todas as mãos disponíveis hoje são deste formato.
+          </p>
           {SECTIONS.map((section) => (
             <div key={section.key} style={{ marginBottom: 22 }}>
               <p
