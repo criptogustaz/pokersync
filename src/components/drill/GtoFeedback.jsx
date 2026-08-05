@@ -23,8 +23,23 @@ function Bar({ label, pct, color }) {
   );
 }
 
-export default function GtoFeedback({ userAction, gtoNodes, context, onResult }) {
-  const result = matchUserActionToGtoNode(userAction, gtoNodes);
+// Extrai { type, sizing } de uma string de ação do solver (ex: "BET 450,000000").
+function parseActionString(raw) {
+  const parts = String(raw).trim().split(/\s+/);
+  const type = parts[0].toUpperCase();
+  const sizing = parts[1] ? parseFloat(parts[1].replace(",", ".")) : 0;
+  return { type, sizing };
+}
+
+function actionLabel({ type, sizing }) {
+  if (type === "FOLD") return "Fold";
+  if (type === "CHECK") return "Check";
+  if (type === "CALL") return "Call";
+  return `${type} ${sizing}`;
+}
+
+export default function GtoFeedback({ userAction, gtoNodes, heroCards, context, onResult }) {
+  const result = matchUserActionToGtoNode(userAction, gtoNodes, heroCards);
   const v = VERDICT[result.verdict] || VERDICT.UNKNOWN;
   const { Icon } = v;
 
@@ -42,15 +57,16 @@ export default function GtoFeedback({ userAction, gtoNodes, context, onResult })
     reported.current = false;
   }, [userAction]);
 
-  const barColor = (n) =>
-    n.action === "FOLD" ? C.neg : n.sizing === userAction.sizing && n.action === userAction.action ? C.pos : C.goldSoft;
+  const actions = gtoNodes?.actions ?? [];
+  const freqs = gtoNodes?.strategy?.[heroCards] ?? [];
 
-  const label = (n) => {
-    if (n.action === "FOLD") return "Fold";
-    if (n.action === "CHECK") return "Check";
-    if (n.action === "CALL") return "Call";
-    return `${n.action} ${n.sizing}`;
-  };
+  const barColor = (parsed) =>
+    parsed.type === "FOLD"
+      ? C.neg
+      : parsed.type === userAction.action.toUpperCase() &&
+        (parsed.sizing === 0 || parsed.sizing === userAction.sizing)
+      ? C.pos
+      : C.goldSoft;
 
   return (
     <section style={{ background: C.panel, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20 }}>
@@ -60,28 +76,34 @@ export default function GtoFeedback({ userAction, gtoNodes, context, onResult })
         </svg>
         <h3 style={{ fontSize: 14, fontWeight: 600 }}>Análise GTO</h3>
       </div>
-      <div style={{ fontSize: 12, color: C.sub, marginBottom: 12 }}>{context}</div>
-
+      <div style={{ fontSize: 12, color: C.sub, marginBottom: 12 }}>
+        {context} {heroCards ? `· Sua mão: ${heroCards}` : ""}
+      </div>
       <div style={{ display: "flex", alignItems: "center", gap: 10, background: v.bg, border: `1px solid ${v.border}`, borderRadius: 12, padding: "12px 14px" }}>
         <Icon size={22} color={v.color} />
         <div>
           <div style={{ fontSize: 15, fontWeight: 800, color: v.color }}>{v.label}</div>
-          <div style={{ fontSize: 12, color: C.sub }}>EV loss: {result.evLoss.toFixed(2)} bb</div>
+          <div style={{ fontSize: 12, color: C.sub }}>
+            Sua jogada: {Math.round((result.chosenFreq ?? 0) * 100)}% da mistura
+          </div>
         </div>
       </div>
-
       <div style={{ marginTop: 16, fontSize: 13, color: C.sub, lineHeight: 1.5 }}>
         {result.verdict === "PERFECT" ? (
-          <>Sua ação casou o nó GTO dentro da tolerância de sizing (±15%). Frequência da solução neste spot:</>
+          <>Sua ação faz parte relevante da mistura GTO para essa mão. Frequência da solução neste spot:</>
         ) : (
-          <>Ação fora da solução ótima. A linha de maior EV está destacada abaixo:</>
+          <>
+            Ação com frequência baixa (ou nula) na mistura ideal. A jogada mais frequente para essa mão é{" "}
+            <strong style={{ color: C.text }}>{result.topAction}</strong> ({Math.round((result.topFreq ?? 0) * 100)}%):
+          </>
         )}
       </div>
-
       <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-        {gtoNodes.map((n, i) => (
-          <Bar key={i} label={label(n)} pct={Math.round((n.freq ?? 0) * 100)} color={barColor(n)} />
-        ))}
+        {actions.map((raw, i) => {
+          const parsed = parseActionString(raw);
+          const pct = Math.round((freqs[i] ?? 0) * 100);
+          return <Bar key={i} label={actionLabel(parsed)} pct={pct} color={barColor(parsed)} />;
+        })}
       </div>
     </section>
   );

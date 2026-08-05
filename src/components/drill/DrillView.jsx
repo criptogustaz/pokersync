@@ -8,7 +8,7 @@ import FilterDrawer from "./FilterDrawer.jsx";
 import ScenarioBar from "./ScenarioBar.jsx";
 import { useDrillBatch } from "../../services/useDrillBatch.js";
 import { useFilters } from "../../services/useFilters.js";
-import { parseBoard, randomHeroCards } from "../../utils/parseBoard.js";
+import { parseBoard, parseHeroCombo } from "../../utils/parseBoard.js";
 
 const DEFAULT_SEATS = [
   { left: "50%", top: "12%", label: "CO", sub: "Vilão", stack: "" },
@@ -18,25 +18,32 @@ const DEFAULT_SEATS = [
   { left: "85%", top: "72%", label: "BB", sub: "Vilão", stack: "" },
 ];
 
+// Extrai { type, sizing } de uma string de ação do solver (ex: "BET 450,000000").
+function parseActionString(raw) {
+  const parts = String(raw).trim().split(/\s+/);
+  const type = parts[0].toUpperCase();
+  const sizing = parts[1] ? parseFloat(parts[1].replace(",", ".")) : 0;
+  return { type, sizing };
+}
+
 export default function DrillView({ onBack }) {
   const { filters, set: setFilter, reset: resetFilters, activeCount, queryString } = useFilters();
   const { hands, loading, error, reload } = useDrillBatch(20, queryString);
 
   const [idx, setIdx] = useState(0);
   const [userAction, setUserAction] = useState(null);
-  const [stats, setStats] = useState({ hits: 0, total: 0, evLossSum: 0 });
-  const [heroCards, setHeroCards] = useState(null);
+  const [stats, setStats] = useState({ hits: 0, total: 0, freqSum: 0 });
 
   const hand = hands[idx] || null;
 
   const board = useMemo(() => (hand ? parseBoard(hand.board) : []), [hand]);
+
+  // heroCards agora vem pronto da API (mão real, sorteada dentro do range
+  // com a estratégia já calculada pelo TexasSolver) — não é mais mockado.
   const hero = useMemo(() => {
-    if (heroCards) return heroCards;
-    if (!hand) return [];
-    const cards = randomHeroCards(hand.board);
-    setHeroCards(cards);
-    return cards;
-  }, [hand, heroCards]);
+    if (!hand?.heroCards) return [{ faceDown: true }, { faceDown: true }];
+    return parseHeroCombo(hand.heroCards);
+  }, [hand]);
 
   const seats = useMemo(() => {
     if (!hand) return DEFAULT_SEATS;
@@ -49,9 +56,14 @@ export default function DrillView({ onBack }) {
     return `Pot ${hand.pot} · Stack ${hand.effectiveStack} bb`;
   }, [hand]);
 
+  // gtoNodes agora é { actions, player, strategy }. actions é uma lista de
+  // strings tipo "BET 450,000000" — precisa parsear pra achar os tamanhos.
   const sizingRange = useMemo(() => {
-    if (!hand?.gtoNodes) return { min: 2, max: 6 };
-    const sizings = hand.gtoNodes.filter((n) => n.sizing > 0).map((n) => n.sizing);
+    if (!hand?.gtoNodes?.actions) return { min: 2, max: 6 };
+    const sizings = hand.gtoNodes.actions
+      .map(parseActionString)
+      .filter((a) => a.sizing > 0)
+      .map((a) => a.sizing);
     if (sizings.length === 0) return { min: 2, max: 6 };
     const min = Math.max(1, Math.floor(Math.min(...sizings) * 0.5));
     const max = Math.ceil(Math.max(...sizings) * 1.5);
@@ -66,7 +78,6 @@ export default function DrillView({ onBack }) {
 
   const nextHand = useCallback(() => {
     setUserAction(null);
-    setHeroCards(null);
     if (idx + 1 < hands.length) {
       setIdx((i) => i + 1);
     } else {
@@ -75,16 +86,18 @@ export default function DrillView({ onBack }) {
     }
   }, [idx, hands.length, reload]);
 
+  // Sem EV disponível nos dados do solver, a métrica de sessão passa a ser
+  // % de acerto (hits/total) e frequência média da ação escolhida.
   const onFeedbackResult = useCallback((result) => {
     setStats((prev) => ({
       hits: prev.hits + (result.verdict === "PERFECT" ? 1 : 0),
       total: prev.total + 1,
-      evLossSum: prev.evLossSum + result.evLoss,
+      freqSum: prev.freqSum + (result.chosenFreq ?? 0),
     }));
   }, []);
 
   const sessionPct = stats.total > 0 ? Math.round((stats.hits / stats.total) * 100) : 0;
-  const avgLoss = stats.total > 0 ? (stats.evLossSum / stats.total).toFixed(2) : "0.00";
+  const avgFreq = stats.total > 0 ? Math.round((stats.freqSum / stats.total) * 100) : 0;
 
   // --- Loading ---
   if (loading) {
@@ -193,6 +206,7 @@ export default function DrillView({ onBack }) {
             <GtoFeedback
               userAction={userAction}
               gtoNodes={hand.gtoNodes}
+              heroCards={hand.heroCards}
               context={context}
               onResult={onFeedbackResult}
             />
@@ -214,8 +228,8 @@ export default function DrillView({ onBack }) {
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>acertos GTO</div>
               </div>
               <div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#FFFFFF" }}>{avgLoss} bb</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>EV loss médio</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#FFFFFF" }}>{avgFreq}%</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>freq. média jogada</div>
               </div>
             </div>
             {stats.total > 0 && (
