@@ -59,7 +59,7 @@ export function onAuthChange(cb) {
   return client().auth.onAuthStateChange(cb);
 }
 
-// Retorna o usuário logado (nome/apelido em user_metadata + e-mail). Best-effort.
+// Retorna o usuário logado (id + nome/apelido em user_metadata + e-mail). Best-effort.
 export async function getCurrentUser() {
   if (!isSupabaseConfigured || !supabase) return null;
   try {
@@ -67,6 +67,7 @@ export async function getCurrentUser() {
     const u = data?.user;
     if (!u) return null;
     return {
+      id: u.id,
       name: u.user_metadata?.nome || u.user_metadata?.name || null,
       nickname: u.user_metadata?.apelido || u.user_metadata?.nickname || null,
       email: u.email || null,
