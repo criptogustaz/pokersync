@@ -1,7 +1,13 @@
 import React from "react";
 import { C } from "../theme.js";
 
-export default function ActionBar({ sizing, onSizing, onAction, callAmount = 2.0, sizingRange }) {
+function presetSize(pot, mult, min, max) {
+  const raw = pot * mult;
+  const clamped = Math.min(max, Math.max(min, raw));
+  return Math.round(clamped * 2) / 2;
+}
+
+export default function ActionBar({ pot = 0, sizingRange, onAction, callAmount = 2.0 }) {
   const { min = 2, max = 6 } = sizingRange || {};
   const btn = {
     border: 0,
@@ -11,6 +17,13 @@ export default function ActionBar({ sizing, onSizing, onAction, callAmount = 2.0
     fontWeight: 700,
     cursor: "pointer",
   };
+
+  const presets = [
+    { label: "½ Pot", value: presetSize(pot, 0.5, min, max) },
+    { label: "¾ Pot", value: presetSize(pot, 0.75, min, max) },
+    { label: "Pot", value: presetSize(pot, 1, min, max) },
+  ];
+
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
       <button style={{ ...btn, background: "transparent", border: `1px solid ${C.neg}`, color: C.neg }} onClick={() => onAction("FOLD", 0)}>
@@ -22,25 +35,15 @@ export default function ActionBar({ sizing, onSizing, onAction, callAmount = 2.0
       <button style={{ ...btn, background: C.panel2, color: C.text, border: `1px solid ${C.line}` }} onClick={() => onAction("CALL", callAmount)}>
         Call {callAmount.toFixed(1)}
       </button>
-      <button style={{ ...btn, background: C.gold, color: C.accentText }} onClick={() => onAction("BET", sizing)}>
-        Bet {sizing.toFixed(1)}
-      </button>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4, width: 220 }}>
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step="0.5"
-          value={sizing}
-          onChange={(e) => onSizing(Number(e.target.value))}
-          style={{ accentColor: C.gold }}
-        />
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: C.sub }}>
-          <span>{min}</span>
-          <span>Sizing</span>
-          <span>{max}</span>
-        </div>
-      </div>
+      {presets.map((p) => (
+        <button
+          key={p.label}
+          style={{ ...btn, background: C.gold, color: C.accentText }}
+          onClick={() => onAction("BET", p.value)}
+        >
+          {p.label} · {p.value.toFixed(1)}
+        </button>
+      ))}
     </div>
   );
 }

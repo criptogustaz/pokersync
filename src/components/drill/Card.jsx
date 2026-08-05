@@ -9,14 +9,41 @@ const SUITS = {
 };
 
 const SIZES = {
-  board: { w: 54, h: 76, rank: 15, suit: 12, center: 26, radius: 9 },
-  hero: { w: 62, h: 88, rank: 18, suit: 14, center: 32, radius: 10 },
+  board: { w: 56, h: 78, rank: 15, suit: 12, center: 30, radius: 9 },
+  hero: { w: 66, h: 92, rank: 18, suit: 14, center: 34, radius: 10 },
+  mini: { w: 20, h: 28, rank: 8, suit: 7, center: 13, radius: 4 },
 };
 
-const serif = 'Georgia, "Times New Roman", serif';
+const font = "'Rajdhani', system-ui, sans-serif";
 
-export default function Card({ rank, suit, faceDown = false, size = "board" }) {
+export default function Card({ rank, suit, faceDown = false, size = "board", empty = false, label }) {
   const s = SIZES[size] || SIZES.board;
+
+  // Slot vazio (turn/river ainda não revelados)
+  if (empty) {
+    return (
+      <div
+        style={{
+          width: s.w,
+          height: s.h,
+          borderRadius: s.radius,
+          border: "1.5px dashed rgba(255,255,255,0.14)",
+          background: "rgba(255,255,255,0.02)",
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "center",
+          paddingBottom: 6,
+          boxSizing: "border-box",
+        }}
+      >
+        {label && (
+          <span style={{ fontSize: 8, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)", fontFamily: font }}>
+            {label}
+          </span>
+        )}
+      </div>
+    );
+  }
 
   if (faceDown) {
     return (
@@ -38,19 +65,18 @@ export default function Card({ rank, suit, faceDown = false, size = "board" }) {
   }
 
   const info = SUITS[suit] || SUITS.s;
+
   const Corner = ({ mirror }) => (
     <div
       style={{
         position: "absolute",
-        ...(mirror
-          ? { right: 6, bottom: 5, transform: "rotate(180deg)" }
-          : { left: 6, top: 5 }),
+        ...(mirror ? { right: 6, bottom: 5, transform: "rotate(180deg)" } : { left: 6, top: 5 }),
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         lineHeight: 1,
         color: info.color,
-        fontFamily: serif,
+        fontFamily: font,
       }}
     >
       <span style={{ fontSize: s.rank, fontWeight: 700 }}>{rank}</span>
@@ -71,6 +97,7 @@ export default function Card({ rank, suit, faceDown = false, size = "board" }) {
       }}
     >
       <Corner mirror={false} />
+      {/* Todas as cartas — inclusive J, Q, K — mostram só o naipe central grande */}
       <span
         style={{
           position: "absolute",
@@ -80,7 +107,7 @@ export default function Card({ rank, suit, faceDown = false, size = "board" }) {
           fontSize: s.center,
           color: info.color,
           opacity: 0.92,
-          fontFamily: serif,
+          fontFamily: font,
         }}
       >
         {info.glyph}
