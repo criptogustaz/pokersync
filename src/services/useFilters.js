@@ -1,12 +1,11 @@
 import { useState, useCallback, useMemo } from "react";
 
+// Só as dimensões que existem de verdade nos dados hoje. solution/format/stack
+// não entram porque todo spot no banco é MTT/ChipEV/40bb — não há o que filtrar.
 const DEFAULTS = {
-  solution: null,       // "MTT" | "Cash" | null (qualquer)
-  format: null,         // "HeadsUP" | "ChipEV" | "ICM" | null
-  stack: null,          // number | null
-  position: null,       // "UTG" | "CO" | ... | null
-  street: "Ambos",      // "Pré-Flop" | "Pós-Flop" | "Ambos"
-  action: "Qualquer",   // "RFI" | "vs Open" | ... | "Qualquer"
+  position: null, // "BB" | "BTN" | "SB" | null (qualquer)
+  action: null,   // "vs Open" | "3-Bet" | null (qualquer)
+  street: null,   // "Flop" | "Turn" | "River" | null (qualquer)
 };
 
 /**
@@ -37,12 +36,9 @@ export function useFilters() {
   // Query string para o endpoint de batch
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
-    if (filters.solution) params.set("solution", filters.solution);
-    if (filters.format) params.set("format", filters.format);
-    if (filters.stack) params.set("stack", String(filters.stack));
     if (filters.position) params.set("position", filters.position);
-    if (filters.street !== "Ambos") params.set("street", filters.street);
-    if (filters.action !== "Qualquer") params.set("action", filters.action);
+    if (filters.action) params.set("action", filters.action);
+    if (filters.street) params.set("street", filters.street);
     return params.toString();
   }, [filters]);
 
