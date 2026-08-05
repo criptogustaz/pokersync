@@ -1,7 +1,8 @@
-// Limiar de frequência: abaixo disso, a ação é considerada erro ("BLUNDER").
-// Acima (ou igual), é considerada parte válida da mistura GTO ("PERFECT").
-// Ajustável conforme feedback de uso real do Modo Treino.
-const FREQUENCY_THRESHOLD = 0.15;
+// Faixas de frequência para classificar a qualidade da decisão.
+// Ajustáveis conforme feedback de uso real do Modo Treino.
+const FREQ_OTIMA = 0.40;
+const FREQ_ACEITAVEL = 0.15;
+const FREQ_ERRO_LEVE = 0.05;
 
 // Mesma tolerância de sizing já usada antes: aceita bets/raises dentro
 // de ±15% do tamanho do nó mais próximo como "a mesma ação".
@@ -19,11 +20,22 @@ function parseActionString(raw) {
 }
 
 /**
+ * Classifica a frequência da ação escolhida em uma faixa de qualidade.
+ */
+function classifyFrequency(freq) {
+  if (freq >= FREQ_OTIMA) return "OTIMA";
+  if (freq >= FREQ_ACEITAVEL) return "ACEITAVEL";
+  if (freq >= FREQ_ERRO_LEVE) return "ERRO_LEVE";
+  return "ERRO_GRAVE";
+}
+
+/**
  * userAction: { action: "CHECK" | "BET" | "CALL" | "RAISE" | "FOLD", sizing?: number }
  * gtoNode: { actions: string[], player: number, strategy: { [combo]: number[] } }
  * heroCards: string, ex "AsKd" — precisa bater com uma chave em gtoNode.strategy
  *
- * Retorna: { verdict: "PERFECT" | "BLUNDER" | "UNKNOWN", chosenFreq, topFreq, topAction }
+ * Retorna: { verdict: "OTIMA" | "ACEITAVEL" | "ERRO_LEVE" | "ERRO_GRAVE" | "UNKNOWN",
+ *            chosenFreq, topFreq, topAction }
  */
 export function matchUserActionToGtoNode(userAction, gtoNode, heroCards) {
   if (!gtoNode || !Array.isArray(gtoNode.actions) || gtoNode.actions.length === 0) {
@@ -37,8 +49,6 @@ export function matchUserActionToGtoNode(userAction, gtoNode, heroCards) {
 
   const parsedActions = gtoNode.actions.map(parseActionString);
 
-  // Acha o índice da ação do jogador. Se houver múltiplos tamanhos de
-  // BET/RAISE disponíveis, escolhe o mais próximo do que o jogador jogou.
   const candidates = parsedActions
     .map((a, i) => ({ ...a, index: i }))
     .filter((a) => a.type === userAction.action.toUpperCase());
@@ -60,8 +70,6 @@ export function matchUserActionToGtoNode(userAction, gtoNode, heroCards) {
     }
   }
 
-  // Ação do jogador não existe nesse nó (ex: tentou dar RAISE onde só
-  // havia CHECK/BET) — tratamos frequência como 0, é blunder na certa.
   const chosenFreq = chosenIndex >= 0 ? comboFreqs[chosenIndex] : 0;
 
   const topIndex = comboFreqs.reduce(
@@ -71,7 +79,8 @@ export function matchUserActionToGtoNode(userAction, gtoNode, heroCards) {
   const topFreq = comboFreqs[topIndex];
   const topAction = gtoNode.actions[topIndex];
 
-  const verdict = chosenFreq >= FREQUENCY_THRESHOLD ? "PERFECT" : "BLUNDER";
+  const verdict = classifyFrequency(chosenFreq);
 
   return { verdict, chosenFreq, topFreq, topAction };
 }
+
