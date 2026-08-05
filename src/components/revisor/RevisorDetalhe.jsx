@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import {
-  Save, CheckCircle2, HelpCircle, Lightbulb, Target, Loader2, PlayCircle, Scale,
+  Save, CheckCircle2, HelpCircle, Lightbulb, Target, Loader2, Scale,
 } from "lucide-react";
 import { getCurrentUser } from "../../services/authService";
 import {

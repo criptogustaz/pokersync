@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { ArrowLeft, BookOpen, Plus } from "lucide-react";
-import { C } from "../theme.js";
+import React, { useState } from "react";
+import { ArrowLeft, BookOpen } from "lucide-react";
 import RevisorFila from "./RevisorFila.jsx";
 import RevisorNovaMao from "./RevisorNovaMao.jsx";
 import RevisorDetalhe from "./RevisorDetalhe.jsx";
@@ -8,10 +7,9 @@ import RevisorDetalhe from "./RevisorDetalhe.jsx";
 /**
  * Wrapper que gerencia a navegação interna do módulo Revisor de Mãos,
  * seguindo o padrão dos outros views (HubView, BankrollView, DrillView).
- * Sem depender de react-router-dom.
  */
 export default function RevisorView({ onBack }) {
-  const [screen, setScreen] = useState("fila"); // 'fila' | 'nova' | 'detalhe'
+  const [screen, setScreen] = useState("fila");
   const [selectedId, setSelectedId] = useState(null);
 
   function goFila() { setSelectedId(null); setScreen("fila"); }
@@ -19,14 +17,14 @@ export default function RevisorView({ onBack }) {
   function goDetalhe(id) { setSelectedId(id); setScreen("detalhe"); }
 
   return (
-    <div style={{ color: C.text }}>
+    <div style={{ color: "#fff" }}>
       <header style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
         <button
           onClick={screen === "fila" ? onBack : goFila}
           style={{
             background: "transparent",
-            border: `1px solid ${C.line}`,
-            color: C.text,
+            border: "1px solid #2a2a2a",
+            color: "#fff",
             borderRadius: 8,
             padding: 8,
             cursor: "pointer",

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, Tag, ImagePlus, X, Save, Play, Plus, Loader2 } from "lucide-react";
+import { Tag, ImagePlus, X, Save, Play, Plus, Loader2 } from "lucide-react";
 import { getCurrentUser } from "../../services/authService";
 import {
   fetchTags,
