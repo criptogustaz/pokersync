@@ -10,35 +10,20 @@ import { useDrillBatch } from "../../services/useDrillBatch.js";
 import { useFilters } from "../../services/useFilters.js";
 import { parseBoard, parseHeroCombo } from "../../utils/parseBoard.js";
 
-// Logo original do PokerSync (recriação em SVG das duas cartas + espada + linhas de velocidade)
-function Logo() {
-  return (
-    <svg width="30" height="30" viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
-      <rect x="10" y="4" width="24" height="32" rx="3" stroke="#fff" strokeWidth="2.2" transform="rotate(-12 22 20)" />
-      <rect x="14" y="8" width="24" height="32" rx="3" stroke="#fff" strokeWidth="2.2" transform="rotate(6 26 24)" />
-      <g transform="translate(24,22) rotate(6) scale(0.7)">
-        <path d="M0,-8 C-4,-4 -8,0 -8,4 C-8,7 -5,9 -2,8 C-1,7.5 0,7 0,7 C0,7 1,7.5 2,8 C5,9 8,7 8,4 C8,0 4,-4 0,-8Z" fill="#fff" />
-        <path d="M0,6 C-1,8 -2,11 -3,12 L3,12 C2,11 1,8 0,6Z" fill="#fff" />
-      </g>
-      <line x1="38" y1="18" x2="44" y2="18" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" opacity="0.7" />
-      <line x1="39" y1="22" x2="46" y2="22" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" />
-      <line x1="38" y1="26" x2="44" y2="26" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" opacity="0.3" />
-    </svg>
-  );
-}
-
-// Octógono simétrico de 8 lugares com o herói fixo no vértice inferior —
-// herói SEMPRE embaixo. Só 5 lugares têm jogador/ação real nesta versão dos
-// dados (hero + 4 vilões); os outros 3 ficam como cadeiras vazias na mesa.
+// Octógono simétrico de 8 lugares (mesa 8-max completa) com o herói fixo no
+// vértice inferior — herói SEMPRE embaixo. Todas as 8 posições aparecem
+// sempre, coloridas por posição; só 5 têm jogador/ação real nesta mão
+// (hero + 4 vilões via `inHand: true`) — as outras 3 mostram só a posição,
+// sem stack nem cartas, porque não há dado real ali para essa mão específica.
 const DEFAULT_SEATS = [
   { left: "50%", top: "90%", label: "BTN", sub: "Você", stack: "", active: true },
-  { left: "18.9%", top: "78.3%", label: "SB", sub: "Vilão", stack: "" },
-  { left: "6%", top: "50%", label: "CO", sub: "Vilão", stack: "" },
-  { left: "18.9%", top: "21.7%", empty: true },
-  { left: "50%", top: "10%", empty: true },
-  { left: "81.1%", top: "21.7%", empty: true },
-  { left: "94%", top: "50%", label: "BB", sub: "Vilão", stack: "" },
-  { left: "81.1%", top: "78.3%", label: "MP", sub: "Vilão", stack: "" },
+  { left: "18.9%", top: "78.3%", label: "SB", sub: "Vilão", stack: "", inHand: true },
+  { left: "6%", top: "50%", label: "CO", sub: "Vilão", stack: "", inHand: true },
+  { left: "18.9%", top: "21.7%", label: "UTG", sub: "Fora da mão", stack: "", inHand: false },
+  { left: "50%", top: "10%", label: "UTG+1", sub: "Fora da mão", stack: "", inHand: false },
+  { left: "81.1%", top: "21.7%", label: "HJ", sub: "Fora da mão", stack: "", inHand: false },
+  { left: "94%", top: "50%", label: "BB", sub: "Vilão", stack: "", inHand: true },
+  { left: "81.1%", top: "78.3%", label: "MP", sub: "Vilão", stack: "", inHand: true },
 ];
 
 // Extrai { type, sizing } de uma string de ação do solver (ex: "BET 450,000000").
@@ -72,7 +57,7 @@ export default function DrillView({ onBack }) {
   const seats = useMemo(() => {
     if (!hand) return DEFAULT_SEATS;
     const stackLabel = `${hand.effectiveStack} bb`;
-    return DEFAULT_SEATS.map((s) => (s.empty ? s : { ...s, stack: stackLabel }));
+    return DEFAULT_SEATS.map((s) => (s.inHand || s.active ? { ...s, stack: stackLabel } : s));
   }, [hand]);
 
   const context = useMemo(() => {
@@ -82,16 +67,19 @@ export default function DrillView({ onBack }) {
 
   // gtoNodes agora é { actions, player, strategy }. actions é uma lista de
   // strings tipo "BET 450,000000" — precisa parsear pra achar os tamanhos.
-  const sizingRange = useMemo(() => {
-    if (!hand?.gtoNodes?.actions) return { min: 2, max: 6 };
+  // Os botões de aposta usam os tamanhos REAIS que o solver calculou para
+  // essa mão (até 3, em ordem crescente) — nada de fração de pote inventada.
+  const betSizings = useMemo(() => {
+    if (!hand?.gtoNodes?.actions) return [];
+    // O solver grava o tamanho em centésimos de BB (ex: "BET 9300,000000"
+    // = 93 bb) — hand.pot/effectiveStack já vêm convertidos pela API, mas
+    // esses valores brutos das ações não, então convertemos aqui.
     const sizings = hand.gtoNodes.actions
       .map(parseActionString)
-      .filter((a) => a.sizing > 0)
-      .map((a) => a.sizing);
-    if (sizings.length === 0) return { min: 2, max: 6 };
-    const min = Math.max(1, Math.floor(Math.min(...sizings) * 0.5));
-    const max = Math.ceil(Math.max(...sizings) * 1.5);
-    return { min, max };
+      .filter((a) => a.type === "BET" && a.sizing > 0)
+      .map((a) => a.sizing / 100);
+    const unique = Array.from(new Set(sizings)).sort((a, b) => a - b);
+    return unique.slice(0, 3);
   }, [hand]);
 
   // Timer do herói: reinicia a cada mão nova, pausa após a decisão.
@@ -198,8 +186,6 @@ export default function DrillView({ onBack }) {
             <ArrowLeft size={18} strokeWidth={1.5} />
           </button>
 
-          <Logo />
-
           <div style={{ flex: 1 }}>
             <h1 style={{ fontSize: 22, fontWeight: 700, color: "#FFFFFF" }}>Modo Treino</h1>
             <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>
@@ -240,9 +226,9 @@ export default function DrillView({ onBack }) {
               {!userAction && (
                 <ActionBar
                   pot={hand.pot}
+                  betSizings={betSizings}
                   onAction={onAction}
                   callAmount={Math.round(hand.pot * 0.5 * 10) / 10}
-                  sizingRange={sizingRange}
                 />
               )}
             </PokerTable>

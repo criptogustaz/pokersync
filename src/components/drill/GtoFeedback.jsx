@@ -24,10 +24,12 @@ function Bar({ label, pct, color }) {
 }
 
 // Extrai { type, sizing } de uma string de ação do solver (ex: "BET 450,000000").
+// O solver grava o tamanho em centésimos de BB — por isso a divisão por 100
+// aqui, pra ficar na mesma unidade que o resto da UI (hand.pot, ActionBar etc).
 function parseActionString(raw) {
   const parts = String(raw).trim().split(/\s+/);
   const type = parts[0].toUpperCase();
-  const sizing = parts[1] ? parseFloat(parts[1].replace(",", ".")) : 0;
+  const sizing = parts[1] ? parseFloat(parts[1].replace(",", ".")) / 100 : 0;
   return { type, sizing };
 }
 
@@ -35,7 +37,7 @@ function actionLabel({ type, sizing }) {
   if (type === "FOLD") return "Fold";
   if (type === "CHECK") return "Check";
   if (type === "CALL") return "Call";
-  return `${type} ${sizing}`;
+  return `${type} ${sizing.toFixed(1)}`;
 }
 
 export default function GtoFeedback({ userAction, gtoNodes, heroCards, context, onResult }) {
@@ -94,7 +96,10 @@ export default function GtoFeedback({ userAction, gtoNodes, heroCards, context, 
         ) : (
           <>
             Ação com frequência baixa (ou nula) na mistura ideal. A jogada mais frequente para essa mão é{" "}
-            <strong style={{ color: C.text }}>{result.topAction}</strong> ({Math.round((result.topFreq ?? 0) * 100)}%):
+            <strong style={{ color: C.text }}>
+              {result.topAction ? actionLabel(parseActionString(result.topAction)) : "—"}
+            </strong>{" "}
+            ({Math.round((result.topFreq ?? 0) * 100)}%):
           </>
         )}
       </div>
