@@ -31,15 +31,28 @@ export default async function handler(req, res) {
       typeof n.strategy === "object" &&
       Object.keys(n.strategy).length > 0;
 
+    // Sorteia uma mão (combo específico, ex: "AsKd") dentre as que o
+    // solver calculou estratégia para este spot. Distribuição uniforme
+    // entre os combos presentes — aproximação aceitável para treino.
+    const dealHeroCombo = (strategy) => {
+      const combos = Object.keys(strategy);
+      const idx = Math.floor(Math.random() * combos.length);
+      return combos[idx];
+    };
+
     const hands = rows
       .filter((r) => isValidGtoNode(r.gto_nodes))
-      .map((r) => ({
-        drillId: r.spot_id,
-        board: r.board,
-        pot: r.pot,
-        effectiveStack: r.effective_stack,
-        gtoNodes: r.gto_nodes,
-      }));
+      .map((r) => {
+        const heroCombo = dealHeroCombo(r.gto_nodes.strategy);
+        return {
+          drillId: r.spot_id,
+          board: r.board,
+          pot: r.pot,
+          effectiveStack: r.effective_stack,
+          gtoNodes: r.gto_nodes,
+          heroCards: heroCombo, // ex: "AsKd" -> primeiras 2 letras = 1a carta, últimas 2 = 2a carta
+        };
+      });
 
     return res.status(200).json(hands);
   });
