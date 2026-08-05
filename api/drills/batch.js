@@ -20,8 +20,19 @@ export default async function handler(req, res) {
 
     const rows = await db.drills.findBatch({ userId: req.userId, size, filters });
 
+    // gto_nodes agora é um objeto { actions, player, strategy }, não uma lista.
+    // Válido = objeto existe, tem pelo menos 1 ação, e tem estratégia por mão.
+    const isValidGtoNode = (n) =>
+      n &&
+      typeof n === "object" &&
+      Array.isArray(n.actions) &&
+      n.actions.length > 0 &&
+      n.strategy &&
+      typeof n.strategy === "object" &&
+      Object.keys(n.strategy).length > 0;
+
     const hands = rows
-      .filter((r) => Array.isArray(r.gto_nodes) && r.gto_nodes.length > 0)
+      .filter((r) => isValidGtoNode(r.gto_nodes))
       .map((r) => ({
         drillId: r.spot_id,
         board: r.board,
