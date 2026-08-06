@@ -10,11 +10,18 @@ import { useDrillBatch } from "../../services/useDrillBatch.js";
 import { useFilters } from "../../services/useFilters.js";
 import { parseBoard, parseHeroCombo } from "../../utils/parseBoard.js";
 
-// Octógono simétrico de 8 lugares (mesa 8-max completa) com o herói fixo no
-// vértice inferior — herói SEMPRE embaixo. Todas as 8 posições aparecem
-// sempre, coloridas por posição; só 5 têm jogador/ação real nesta mão
-// (hero + 4 vilões via `inHand: true`) — as outras 3 mostram só a posição,
-// sem stack nem cartas, porque não há dado real ali para essa mão específica.
+/* ==================================================================
+   CORREÇÃO PRINCIPAL
+
+   Os `if (loading) return`, `if (error) return` e `if (!hand) return`
+   desmontavam a tela inteira — incluindo o FilterDrawer. Como o estado
+   `open` morava dentro dele, cada mudança de filtro disparava refetch →
+   loading → desmonta → drawer volta fechado.
+
+   Agora o header (com o FilterDrawer) é renderizado SEMPRE, e só a área
+   de conteúdo troca entre loading / error / vazio / mesa.
+===================================================================*/
+
 const DEFAULT_SEATS = [
   { left: "50%", top: "90%", label: "BTN", sub: "Você", stack: "", active: true },
   { left: "18.9%", top: "78.3%", label: "SB", sub: "Vilão", stack: "", inHand: true },
@@ -26,7 +33,6 @@ const DEFAULT_SEATS = [
   { left: "81.1%", top: "78.3%", label: "MP", sub: "Vilão", stack: "", inHand: true },
 ];
 
-// Extrai { type, sizing } de uma string de ação do solver (ex: "BET 450,000000").
 function parseActionString(raw) {
   const parts = String(raw).trim().split(/\s+/);
   const type = parts[0].toUpperCase();
@@ -38,6 +44,9 @@ export default function DrillView({ onBack }) {
   const { filters, set: setFilter, reset: resetFilters, activeCount, queryString } = useFilters();
   const { hands, loading, error, reload } = useDrillBatch(20, queryString);
 
+  // Estado do drawer sobe para cá: sobrevive a loading, error e vazio.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
   const [idx, setIdx] = useState(0);
   const [userAction, setUserAction] = useState(null);
   const [stats, setStats] = useState({ hits: 0, total: 0, freqSum: 0 });
@@ -45,10 +54,15 @@ export default function DrillView({ onBack }) {
 
   const hand = hands[idx] || null;
 
+  // Filtro novo = lote novo: volta para a primeira mão e limpa a decisão,
+  // senão o índice antigo aponta para uma mão que não existe mais.
+  useEffect(() => {
+    setIdx(0);
+    setUserAction(null);
+  }, [queryString]);
+
   const board = useMemo(() => (hand ? parseBoard(hand.board) : []), [hand]);
 
-  // heroCards agora vem pronto da API (mão real, sorteada dentro do range
-  // com a estratégia já calculada pelo TexasSolver) — não é mais mockado.
   const hero = useMemo(() => {
     if (!hand?.heroCards) return [{ faceDown: true }, { faceDown: true }];
     return parseHeroCombo(hand.heroCards);
@@ -65,15 +79,8 @@ export default function DrillView({ onBack }) {
     return `Pot ${hand.pot} · Stack ${hand.effectiveStack} bb`;
   }, [hand]);
 
-  // gtoNodes agora é { actions, player, strategy }. actions é uma lista de
-  // strings tipo "BET 450,000000" — precisa parsear pra achar os tamanhos.
-  // Os botões de aposta usam os tamanhos REAIS que o solver calculou para
-  // essa mão (até 3, em ordem crescente) — nada de fração de pote inventada.
   const betSizings = useMemo(() => {
     if (!hand?.gtoNodes?.actions) return [];
-    // O solver grava o tamanho em centésimos de BB (ex: "BET 9300,000000"
-    // = 93 bb) — hand.pot/effectiveStack já vêm convertidos pela API, mas
-    // esses valores brutos das ações não, então convertemos aqui.
     const sizings = hand.gtoNodes.actions
       .map(parseActionString)
       .filter((a) => a.type === "BET" && a.sizing > 0)
@@ -82,18 +89,17 @@ export default function DrillView({ onBack }) {
     return unique.slice(0, 3);
   }, [hand]);
 
-  // Timer do herói: reinicia a cada mão nova, pausa após a decisão.
   useEffect(() => {
     setHeroTimer(30);
   }, [idx]);
 
   useEffect(() => {
-    if (userAction) return;
+    if (userAction || !hand) return;
     const id = setInterval(() => {
       setHeroTimer((t) => (t <= 1 ? 0 : t - 1));
     }, 1000);
     return () => clearInterval(id);
-  }, [userAction, idx]);
+  }, [userAction, idx, hand]);
 
   const onAction = useCallback((action, size) => {
     setUserAction({ action, sizing: size });
@@ -109,8 +115,6 @@ export default function DrillView({ onBack }) {
     }
   }, [idx, hands.length, reload]);
 
-  // Sem EV disponível nos dados do solver, a métrica de sessão passa a ser
-  // % de acerto (hits/total) e frequência média da ação escolhida.
   const onFeedbackResult = useCallback((result) => {
     setStats((prev) => ({
       hits: prev.hits + (result.verdict === "PERFECT" ? 1 : 0),
@@ -122,61 +126,142 @@ export default function DrillView({ onBack }) {
   const sessionPct = stats.total > 0 ? Math.round((stats.hits / stats.total) * 100) : 0;
   const avgFreq = stats.total > 0 ? Math.round((stats.freqSum / stats.total) * 100) : 0;
 
-  // --- Loading ---
+  const panelBox = {
+    ...font,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    minHeight: 300,
+  };
+
+  /* ---------------- Conteúdo (nunca desmonta o header) --------------- */
+  let content;
+
   if (loading) {
-    return (
-      <div style={{ background: "#000000", borderRadius: 20, padding: 20 }}>
-        <div style={{ ...font, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, minHeight: 300 }}>
-          <Loader2 size={32} color="rgba(255,255,255,0.5)" style={{ animation: "spin 1s linear infinite" }} />
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Carregando mãos...</p>
-          <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-        </div>
+    content = (
+      <div style={panelBox}>
+        <Loader2 size={32} color="rgba(255,255,255,0.5)" style={{ animation: "spin 1s linear infinite" }} />
+        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Carregando mãos...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
       </div>
     );
-  }
-
-  // --- Error ---
-  if (error) {
-    return (
-      <div style={{ background: "#000000", borderRadius: 20, padding: 20 }}>
-        <div style={{ ...font, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, minHeight: 300 }}>
-          <AlertTriangle size={32} color={C.neg} />
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Erro ao carregar mãos.</p>
-          <button onClick={reload} style={{ background: "#FFFFFF", color: "#111111", border: 0, borderRadius: 10, padding: "10px 24px", cursor: "pointer", fontWeight: 700, fontSize: 13 }}>
-            Tentar novamente
-          </button>
-        </div>
+  } else if (error) {
+    content = (
+      <div style={panelBox}>
+        <AlertTriangle size={32} color={C.neg} />
+        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Erro ao carregar mãos.</p>
+        <button
+          onClick={reload}
+          style={{ background: "#FFFFFF", color: "#111111", border: 0, borderRadius: 10, padding: "10px 24px", cursor: "pointer", fontWeight: 700, fontSize: 13 }}
+        >
+          Tentar novamente
+        </button>
       </div>
     );
-  }
-
-  // --- Sem mãos ---
-  if (!hand) {
-    return (
-      <div style={{ background: "#000000", borderRadius: 20, padding: 20 }}>
-        <div style={{ ...font, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, minHeight: 300 }}>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14, textAlign: "center" }}>
-            {activeCount > 0
-              ? "Nenhuma mão encontrada para esses filtros."
-              : "Nenhuma mão disponível. Importe spots com o solver primeiro."}
-          </p>
-          {activeCount > 0 && (
-            <button onClick={resetFilters} style={{ background: "#1E1E1E", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 24px", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
+  } else if (!hand) {
+    content = (
+      <div style={panelBox}>
+        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14, textAlign: "center" }}>
+          {activeCount > 0
+            ? "Nenhuma mão encontrada para esses filtros."
+            : "Nenhuma mão disponível. Importe spots com o solver primeiro."}
+        </p>
+        {activeCount > 0 && (
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              onClick={resetFilters}
+              style={{ background: "#1E1E1E", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 24px", cursor: "pointer", fontWeight: 600, fontSize: 13 }}
+            >
               Limpar filtros
             </button>
+            <button
+              onClick={() => setFiltersOpen(true)}
+              style={{ background: "#FFFFFF", color: "#111111", border: 0, borderRadius: 10, padding: "10px 24px", cursor: "pointer", fontWeight: 700, fontSize: 13 }}
+            >
+              Ajustar filtros
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  } else {
+    content = (
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 340px", gap: 20, alignItems: "start" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <PokerTable
+            seats={seats}
+            pot={String(hand.pot)}
+            board={board}
+            hero={hero}
+            heroTimer={heroTimer}
+            betEvent={userAction}
+          >
+            {!userAction && (
+              <ActionBar
+                pot={hand.pot}
+                betSizings={betSizings}
+                onAction={onAction}
+                callAmount={Math.round(hand.pot * 0.5 * 10) / 10}
+              />
+            )}
+          </PokerTable>
+
+          <ScenarioBar filters={filters} onSet={setFilter} />
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {userAction ? (
+            <GtoFeedback
+              userAction={userAction}
+              gtoNodes={hand.gtoNodes}
+              heroCards={hand.heroCards}
+              context={context}
+              onResult={onFeedbackResult}
+            />
+          ) : (
+            <section style={{ background: "#1E1E1E", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 20 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: "#FFFFFF" }}>Análise GTO</h3>
+              <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>Escolha sua ação para ver o feedback.</p>
+            </section>
           )}
-          <button onClick={onBack} style={{ background: "#1E1E1E", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 10, padding: "10px 24px", cursor: "pointer", fontWeight: 600, fontSize: 13 }}>
-            Voltar
-          </button>
+
+          <section style={{ background: "#1E1E1E", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 20 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "#FFFFFF" }}>Sessão</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: C.pos }}>
+                  {stats.hits}/{stats.total}
+                </div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>acertos GTO</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#FFFFFF" }}>{avgFreq}%</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>freq. média jogada</div>
+              </div>
+            </div>
+            {stats.total > 0 && (
+              <>
+                <div style={{ marginTop: 14, height: 6, borderRadius: 4, background: "#252525" }}>
+                  <div style={{ width: `${sessionPct}%`, height: "100%", borderRadius: 4, background: "#FFFFFF" }} />
+                </div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 6 }}>
+                  {sessionPct}% · Mão {idx + 1}/{hands.length}
+                </div>
+              </>
+            )}
+          </section>
         </div>
       </div>
     );
   }
 
+  /* ----------------------------- Render ----------------------------- */
   return (
     <div style={{ background: "#000000", borderRadius: 20, padding: 20 }}>
       <div style={{ ...font, display: "flex", flexDirection: "column", gap: 16, paddingBottom: 40 }}>
-        {/* Header */}
+        {/* Header — SEMPRE montado, em todos os estados */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <button
             onClick={onBack}
@@ -189,19 +274,21 @@ export default function DrillView({ onBack }) {
           <div style={{ flex: 1 }}>
             <h1 style={{ fontSize: 22, fontWeight: 700, color: "#FFFFFF" }}>Modo Treino</h1>
             <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>
-              Mão {idx + 1} de {hands.length}
+              {hand ? `Mão ${idx + 1} de ${hands.length}` : loading ? "Carregando..." : "Sem mãos"}
             </p>
           </div>
 
-          {/* Filtro global */}
           <FilterDrawer
+            open={filtersOpen}
+            onOpen={() => setFiltersOpen(true)}
+            onClose={() => setFiltersOpen(false)}
             filters={filters}
             onSet={setFilter}
             onReset={resetFilters}
             activeCount={activeCount}
           />
 
-          {userAction && (
+          {userAction && hand && (
             <button
               onClick={nextHand}
               title="Próxima mão"
@@ -212,75 +299,7 @@ export default function DrillView({ onBack }) {
           )}
         </div>
 
-        {/* Mesa + Painel lateral */}
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) 340px", gap: 20, alignItems: "start" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <PokerTable
-              seats={seats}
-              pot={String(hand.pot)}
-              board={board}
-              hero={hero}
-              heroTimer={heroTimer}
-              betEvent={userAction}
-            >
-              {!userAction && (
-                <ActionBar
-                  pot={hand.pot}
-                  betSizings={betSizings}
-                  onAction={onAction}
-                  callAmount={Math.round(hand.pot * 0.5 * 10) / 10}
-                />
-              )}
-            </PokerTable>
-
-            {/* Barra de cenário logo abaixo da mesa */}
-            <ScenarioBar filters={filters} onSet={setFilter} />
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {userAction ? (
-              <GtoFeedback
-                userAction={userAction}
-                gtoNodes={hand.gtoNodes}
-                heroCards={hand.heroCards}
-                context={context}
-                onResult={onFeedbackResult}
-              />
-            ) : (
-              <section style={{ background: "#1E1E1E", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 20 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 8, color: "#FFFFFF" }}>Análise GTO</h3>
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>Escolha sua ação para ver o feedback.</p>
-              </section>
-            )}
-
-            {/* Stats da sessão */}
-            <section style={{ background: "#1E1E1E", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 20 }}>
-              <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12, color: "#FFFFFF" }}>Sessão</h3>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: C.pos }}>
-                    {stats.hits}/{stats.total}
-                  </div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>acertos GTO</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: "#FFFFFF" }}>{avgFreq}%</div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>freq. média jogada</div>
-                </div>
-              </div>
-              {stats.total > 0 && (
-                <>
-                  <div style={{ marginTop: 14, height: 6, borderRadius: 4, background: "#252525" }}>
-                    <div style={{ width: `${sessionPct}%`, height: "100%", borderRadius: 4, background: "#FFFFFF" }} />
-                  </div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 6 }}>
-                    {sessionPct}% · Mão {idx + 1}/{hands.length}
-                  </div>
-                </>
-              )}
-            </section>
-          </div>
-        </div>
+        {content}
       </div>
     </div>
   );
