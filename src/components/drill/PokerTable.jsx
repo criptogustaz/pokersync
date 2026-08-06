@@ -12,7 +12,10 @@ import { T, F, POS, ACT, num } from "./drillTheme";
        pot: 18,                       // bb
        spr: 1.4,
        board: ["Ah","Kd","5c","2s",null],   // sempre 5 posições
-       history: [                     // ruas já jogadas
+       history: [                     // ruas já jogadas (hoje sempre
+                                       // [] — a API de
+                                       // /api/drills/batch ainda não
+                                       // retorna ações rua a rua)
          { street: "PRÉ",  actions: [{ pos:"BTN", label:"2.5" }] },
          { street: "FLOP", current: true, actions: [{ pos:"BB", label:"check" }] },
        ],
@@ -33,12 +36,17 @@ import { T, F, POS, ACT, num } from "./drillTheme";
 
    action: { type: "fold"|"check"|"call"|"bet"|"raise", size?: number }
 
-   MUDANÇA: o CTA "Abrir filtros" foi removido do estado zerado — a
-   ação de abrir filtros já vive no ícone do FilterDrawer no header,
-   e o botão duplicado aqui não estava levando a lugar nenhum. A prop
-   onOpenFilters foi removida junto (não é mais usada por este
-   componente); se o DrillView ainda passar essa prop, ela é
-   simplesmente ignorada.
+   heroTimer: segundos restantes para o herói decidir (opcional).
+     Exibido ao lado do badge "NA AÇÃO" quando o herói está "acting".
+
+   children: conteúdo extra renderizado abaixo do felt — é onde o
+   DrillView monta a ActionBar enquanto o herói ainda não agiu.
+   Restaurado nesta revisão: a versão anterior deste arquivo tinha
+   removido o slot de children junto com o CTA "Abrir filtros", o que
+   também derrubou a ActionBar sem querer.
+
+   MUDANÇA: o CTA "Abrir filtros" continua removido do estado zerado —
+   abrir filtros é ação da barra de contexto no header.
 ===================================================================*/
 
 /* 8 assentos sempre visíveis. `card` = lado onde as cartas nascem,
@@ -68,7 +76,7 @@ function ActionBadge({ action }) {
   );
 }
 
-function Seat({ seat, state }) {
+function Seat({ seat, state, heroTimer }) {
   const col = POS[seat.pos];
   const { status = "empty", stack, action, cards } = state;
   const hero = !!seat.hero;
@@ -128,11 +136,18 @@ function Seat({ seat, state }) {
             </div>
           )}
 
-          <div style={{ minHeight: 17, display: "flex", alignItems: "center" }}>
+          <div style={{ minHeight: 17, display: "flex", alignItems: "center", gap: 5 }}>
             {acting ? (
-              <span style={{ fontFamily: F, fontSize: 9.5, fontWeight: 700, letterSpacing: 0.6, color: col.glow }}>
-                NA AÇÃO
-              </span>
+              <>
+                <span style={{ fontFamily: F, fontSize: 9.5, fontWeight: 700, letterSpacing: 0.6, color: col.glow }}>
+                  NA AÇÃO
+                </span>
+                {hero && heroTimer != null && (
+                  <span style={{ fontFamily: F, fontSize: 9.5, fontWeight: 700, color: T.dim, ...num }}>
+                    · {heroTimer}s
+                  </span>
+                )}
+              </>
             ) : (
               <ActionBadge action={action} />
             )}
@@ -155,8 +170,9 @@ function Seat({ seat, state }) {
   );
 }
 
-export default function PokerTable({ hand }) {
+export default function PokerTable({ hand, heroTimer, children }) {
   const active = !!hand;
+  const history = hand?.history || [];
   const seatData = (p) => (hand?.seats && hand.seats[p]) || { status: "empty" };
 
   return (
@@ -169,7 +185,7 @@ export default function PokerTable({ hand }) {
         background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015))",
       }}>
         {active ? (
-          hand.history.map((h, i) => (
+          history.map((h, i) => (
             <React.Fragment key={i}>
               <span style={{
                 fontFamily: F, fontSize: 9.5, fontWeight: 800, letterSpacing: 1.2,
@@ -190,7 +206,7 @@ export default function PokerTable({ hand }) {
                   </span>
                 ))}
               </div>
-              {i < hand.history.length - 1 && <span style={{ color: T.line }}>|</span>}
+              {i < history.length - 1 && <span style={{ color: T.line }}>|</span>}
             </React.Fragment>
           ))
         ) : (
@@ -257,7 +273,8 @@ export default function PokerTable({ hand }) {
               </>
             ) : (
               /* Estado zerado: mesa vazia até o filtro ser aplicado.
-                 Sem CTA aqui — abrir filtros é ação do ícone no header. */
+                 Sem CTA aqui — abrir filtros é ação da barra de
+                 contexto no header. */
               <div style={{ textAlign: "center", maxWidth: 290, fontFamily: F }}>
                 <div style={{ display: "flex", gap: 7, justifyContent: "center", marginBottom: 16 }}>
                   {[0, 1, 2, 3, 4].map((i) => <Card key={i} card={null} />)}
@@ -266,17 +283,23 @@ export default function PokerTable({ hand }) {
                   Escolha os filtros para começar
                 </div>
                 <div style={{ color: T.dim, fontSize: 12, lineHeight: 1.5 }}>
-                  Defina stack, posição e rua no ícone de filtro acima. Só mãos que existem na base aparecem aqui.
+                  Defina posição, ação e rua no filtro acima. Só mãos que existem na base aparecem aqui.
                 </div>
               </div>
             )}
           </div>
 
           {SEATS.map((s) => (
-            <Seat key={s.pos} seat={s} state={seatData(s.pos)} />
+            <Seat key={s.pos} seat={s} state={seatData(s.pos)} heroTimer={heroTimer} />
           ))}
         </div>
       </div>
+
+      {active && children && (
+        <div style={{ marginTop: 14 }}>
+          {children}
+        </div>
+      )}
     </div>
   );
 }
