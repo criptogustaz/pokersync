@@ -2,12 +2,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Filter, X } from "lucide-react";
 
 /* ==================================================================
-   FilterDrawer v3 — filtro ciente dos dados
+   FilterDrawer v4 — filtro ciente dos dados, sem números na tela
 
-   O problema: SB + vs Open não existe na base (SB só tem 3-Bet, BTN só
-   tem vs Open). O drawer oferecia 18 combinações e 6 levavam à tela
-   vazia. Agora ele desabilita em cascata o que não tem spot e mostra a
-   contagem de cada opção.
+   O problema original: SB + vs Open não existe na base (SB só tem
+   3-Bet, BTN só tem vs Open). O drawer oferece 18 combinações e 6
+   levariam à tela vazia. A contagem por spot continua sendo calculada
+   internamente e usada para desabilitar/cascatear — só não é mais
+   exibida: o jogador escolhe o cenário pelo que quer treinar, não pelo
+   volume disponível.
 
    PROPS
    open, onOpen, onClose, filters, onSet, onReset, activeCount
@@ -47,7 +49,7 @@ const SECTIONS = [
 
 const FF = '"Space Grotesk", sans-serif';
 
-function Pill({ label, count, active, disabled, onClick }) {
+function Pill({ label, active, disabled, onClick }) {
   const [h, setH] = useState(false);
   return (
     <button
@@ -55,12 +57,11 @@ function Pill({ label, count, active, disabled, onClick }) {
       disabled={disabled}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
-      title={disabled ? "Sem mãos para esta combinação" : `${count} mãos`}
+      title={disabled ? "Sem mãos para esta combinação" : undefined}
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 6,
-        padding: "5px 10px 5px 12px",
+        padding: "5px 12px",
         borderRadius: 8,
         fontSize: 12,
         fontWeight: 600,
@@ -79,14 +80,6 @@ function Pill({ label, count, active, disabled, onClick }) {
       }}
     >
       {label}
-      {!disabled && (
-        <span style={{
-          fontSize: 9.5, fontWeight: 700, fontVariantNumeric: "tabular-nums",
-          color: active ? "rgba(17,17,17,0.5)" : "rgba(255,255,255,0.28)",
-        }}>
-          {count}
-        </span>
-      )}
     </button>
   );
 }
@@ -115,8 +108,9 @@ export default function FilterDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  /* Contagem de cada opção considerando as OUTRAS dimensões já escolhidas.
-     Opção com 0 fica desabilitada — é o que impede SB + vs Open. */
+  /* Contagem por opção considerando as OUTRAS dimensões já escolhidas.
+     Usada só para habilitar/desabilitar — nunca exibida na tela. Opção
+     com 0 fica desabilitada, é o que impede SB + vs Open. */
   const counts = useMemo(() => {
     const out = {};
     SECTIONS.forEach(({ key, options }) => {
@@ -167,25 +161,46 @@ export default function FilterDrawer({
 
   return (
     <>
+      {/* Gatilho — botão sólido rotulado, pensado para viver dentro da
+          barra de contexto (ContextBar), não mais um ícone isolado. */}
       <button
         onClick={onOpen}
-        title="Filtros"
         style={{
-          position: "relative", display: "grid", placeItems: "center",
-          width: 38, height: 38, borderRadius: 10,
-          background: activeCount > 0 ? "rgba(255,255,255,0.1)" : "#1E1E1E",
-          border: activeCount > 0 ? "1px solid rgba(255,255,255,0.25)" : "1px solid rgba(255,255,255,0.08)",
-          color: activeCount > 0 ? "#FFFFFF" : "rgba(255,255,255,0.45)",
-          cursor: "pointer", transition: "all .2s",
+          display: "flex",
+          alignItems: "center",
+          gap: 7,
+          height: 38,
+          padding: "0 14px",
+          borderRadius: 10,
+          background: activeCount > 0 ? "#FFFFFF" : "#1E1E1E",
+          border: activeCount > 0 ? "1px solid #FFFFFF" : "1px solid rgba(255,255,255,0.1)",
+          color: activeCount > 0 ? "#111111" : "rgba(255,255,255,0.7)",
+          cursor: "pointer",
+          fontFamily: FF,
+          fontSize: 13,
+          fontWeight: 700,
+          transition: "all .2s",
+          whiteSpace: "nowrap",
         }}
       >
-        <Filter size={16} strokeWidth={1.5} />
+        <Filter size={15} strokeWidth={2} />
+        Filtros
         {activeCount > 0 && (
-          <span style={{
-            position: "absolute", top: -4, right: -4, width: 16, height: 16,
-            borderRadius: "50%", background: "#FFFFFF", color: "#111111",
-            fontSize: 9, fontWeight: 800, display: "grid", placeItems: "center", lineHeight: 1,
-          }}>
+          <span
+            style={{
+              display: "grid",
+              placeItems: "center",
+              minWidth: 16,
+              height: 16,
+              padding: "0 4px",
+              borderRadius: "50%",
+              background: "#111111",
+              color: "#FFFFFF",
+              fontSize: 9,
+              fontWeight: 800,
+              lineHeight: 1,
+            }}
+          >
             {activeCount}
           </span>
         )}
@@ -258,7 +273,6 @@ export default function FilterDrawer({
                   <Pill
                     key={opt}
                     label={String(opt)}
-                    count={counts[section.key][opt]}
                     active={draft[section.key] === opt}
                     disabled={counts[section.key][opt] === 0}
                     onClick={() => toggle(section.key, opt)}
@@ -282,7 +296,7 @@ export default function FilterDrawer({
               textTransform: "uppercase", letterSpacing: "0.04em",
             }}
           >
-            {dirty ? `Aplicar · ${total} mãos` : "Fechar"}
+            {dirty ? "Aplicar filtros" : "Fechar"}
           </button>
         </div>
       </div>
