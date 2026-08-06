@@ -1,28 +1,19 @@
-// COPIE AS DUAS PRIMEIRAS LINHAS DO batch.js AQUI
-// (o import do client do Supabase — o nome do arquivo varia)
-import { supabase } from "../_lib/supabase.js";
+import { requireAuth } from "../_middleware/requireAuth.js";
+import { db } from "../_db/index.js";
 
+// GET /api/drills/facets
+// Devolve as combinações position × action × street que existem de fato
+// na base, com a contagem de cada uma. O FilterDrawer usa isso para
+// desabilitar opções sem spot (ex: SB + vs Open não existe).
 export default async function handler(req, res) {
-  try {
-    const { data, error } = await supabase
-      .from("drills")
-      .select("position, action, street");
+  await requireAuth(req, res, async () => {
+    if (req.method !== "GET") return res.status(405).end();
 
-    if (error) throw error;
-
-    const map = {};
-    for (const r of data) {
-      const k = `${r.position}|${r.action}|${r.street}`;
-      map[k] = (map[k] || 0) + 1;
+    try {
+      const facets = await db.drills.facets({ userId: req.userId });
+      return res.status(200).json(facets);
+    } catch (err) {
+      return res.status(500).json({ error: err.message });
     }
-
-    const facets = Object.entries(map).map(([k, n]) => {
-      const [position, action, street] = k.split("|");
-      return { position, action, street, n };
-    });
-
-    res.status(200).json(facets);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  });
 }
