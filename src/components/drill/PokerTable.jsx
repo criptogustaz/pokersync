@@ -1,399 +1,398 @@
-import React, { useEffect, useRef, useState } from "react";
-import { C } from "../theme.js";
-import Card from "./Card.jsx";
+import React, { useState } from "react";
 
-const font = "'Rajdhani', system-ui, sans-serif";
+/* ------------------------------------------------------------------
+   PokerTable — Modo Treino (v2)
+   No projeto real, troque o bloco C/font abaixo por:
+   import { C, font } from "../theme";
+-------------------------------------------------------------------*/
+const C = {
+  bg: "#0B0D10",
+  panel: "#12161C",
+  line: "#232A33",
+  text: "#E9EEF5",
+  dim: "#8A94A3",
+};
+const font = "'Inter', system-ui, sans-serif";
 
-// Cores por posição — mesma paleta do Figma.
-const POS_CFG = {
-  BTN: { bg: "#6d28d9", ring: "#a78bfa" },
-  SB: { bg: "#92400e", ring: "#fbbf24" },
-  BB: { bg: "#991b1b", ring: "#fca5a5" },
-  UTG: { bg: "#075985", ring: "#38bdf8" },
-  "UTG+1": { bg: "#0c4a6e", ring: "#7dd3fc" },
-  MP: { bg: "#065f46", ring: "#34d399" },
-  HJ: { bg: "#1e3a5f", ring: "#60a5fa" },
-  CO: { bg: "#3b0764", ring: "#c4b5fd" },
+/* 1) Cor própria por posição — hue distinta e memorizável.
+   Ordem de ação horária: cores frias no early, quentes no late.
+   Isso vira código visual: o grinder identifica a posição pela cor
+   antes de ler o texto (reconhecimento > leitura). */
+const POS = {
+  UTG:     { base: "#3B82F6", glow: "#60A5FA" }, // azul
+  "UTG+1": { base: "#06B6D4", glow: "#22D3EE" }, // ciano
+  MP:      { base: "#10B981", glow: "#34D399" }, // verde
+  HJ:      { base: "#EAB308", glow: "#FACC15" }, // âmbar
+  CO:      { base: "#F97316", glow: "#FB923C" }, // laranja
+  BTN:     { base: "#A855F7", glow: "#C084FC" }, // roxo (herói)
+  SB:      { base: "#EC4899", glow: "#F472B6" }, // rosa
+  BB:      { base: "#EF4444", glow: "#F87171" }, // vermelho
 };
 
-// ─── Fichas 3D (cores por faixa de valor, igual ao Figma) ──────────────────
-const CHIP_TIERS = [
-  { bg: "#e8e8e8", rim: "#bbb", center: "#f4f4f4", min: 0, max: 0.9 },
-  { bg: "#cc2222", rim: "#8b0000", center: "#ee5555", min: 1, max: 4.9 },
-  { bg: "#1e8a3e", rim: "#0f5c28", center: "#3cc466", min: 5, max: 24.9 },
-  { bg: "#1a5fbb", rim: "#0d3d7a", center: "#3d8ee8", min: 25, max: 99.9 },
-  { bg: "#1c1c1c", rim: "#000", center: "#444", min: 100, max: 999999 },
+/* Geometria: 8 assentos SEMPRE visíveis, ancorados na borda da elipse.
+   `card` = lado em que as cartas nascem, sempre voltado ao centro
+   (evita corte e dá leitura orgânica de "mão sobre a mesa"). */
+const SEATS = [
+  { pos: "UTG",   x: 13,  y: 30, card: "right" },
+  { pos: "UTG+1", x: 34,  y: 13, card: "below" },
+  { pos: "MP",    x: 66,  y: 13, card: "below" },
+  { pos: "HJ",    x: 87,  y: 30, card: "left"  },
+  { pos: "CO",    x: 92,  y: 62, card: "left"  },
+  { pos: "BB",    x: 72,  y: 84, card: "above" },
+  { pos: "BTN",   x: 50,  y: 90, card: "above", hero: true },
+  { pos: "SB",    x: 28,  y: 84, card: "above" },
 ];
-const getChipTier = (bb) => CHIP_TIERS.find((c) => bb >= c.min && bb <= c.max) || CHIP_TIERS[0];
 
-function Chip3D({ amountBB, size = 22 }) {
-  const c = getChipTier(amountBB);
-  const rx = size * 0.5, ry = size * 0.28, depth = size * 0.22;
-  const cx = size / 2, cyT = ry + 1, cyB = cyT + depth, H = cyB + ry + 2;
-  const uid = `ch${c.min}-${size}`;
-  return (
-    <svg width={size} height={H} viewBox={`0 0 ${size} ${H}`} style={{ flexShrink: 0, display: "block" }}>
-      <defs>
-        <linearGradient id={`s${uid}`} x1="0%" x2="100%">
-          <stop offset="0%" stopColor={c.rim} />
-          <stop offset="30%" stopColor={c.bg} />
-          <stop offset="70%" stopColor={c.bg} />
-          <stop offset="100%" stopColor={c.rim} />
-        </linearGradient>
-        <radialGradient id={`f${uid}`} cx="40%" cy="35%" r="65%">
-          <stop offset="0%" stopColor={c.center} />
-          <stop offset="55%" stopColor={c.bg} />
-          <stop offset="100%" stopColor={c.rim} />
-        </radialGradient>
-      </defs>
-      <ellipse cx={cx} cy={cyB} rx={rx} ry={ry} fill={c.rim} />
-      <path d={`M${cx - rx},${cyT}L${cx - rx},${cyB}a${rx},${ry} 0 0 0 ${rx * 2},0L${cx + rx},${cyT}a${rx},${ry} 0 0 1 ${-rx * 2},0`} fill={`url(#s${uid})`} />
-      {[...Array(8)].map((_, i) => {
-        const a = (i / 8) * Math.PI;
-        const x1 = cx + rx * Math.cos(Math.PI + a);
-        return <line key={i} x1={x1} y1={cyT + ry * 0.15} x2={x1} y2={cyB - ry * 0.15} stroke="rgba(255,255,255,.55)" strokeWidth={0.8} />;
-      })}
-      <ellipse cx={cx} cy={cyT} rx={rx} ry={ry} fill={`url(#f${uid})`} stroke={c.rim} strokeWidth={0.8} />
-      <ellipse cx={cx} cy={cyT} rx={rx * 0.72} ry={ry * 0.72} fill="none" stroke="rgba(255,255,255,.28)" strokeWidth={0.8} />
-      <ellipse cx={cx} cy={cyT} rx={rx * 0.46} ry={ry * 0.46} fill={c.center} stroke="rgba(255,255,255,.3)" strokeWidth={0.5} />
-      <ellipse cx={cx - rx * 0.15} cy={cyT - ry * 0.28} rx={rx * 0.28} ry={ry * 0.14} fill="rgba(255,255,255,.22)" />
-    </svg>
-  );
-}
+const SUITS = {
+  h: { g: "♥", c: "#FF3B57" },
+  d: { g: "♦", c: "#2E9BFF" },
+  c: { g: "♣", c: "#22C55E" },
+  s: { g: "♠", c: "#111820" },
+};
 
-function ChipStack({ amountBB, count = 3, size = 20 }) {
-  const ry = size * 0.28, depth = size * 0.22, chipH = ry * 2 + depth + 3, slice = depth;
-  const stackH = chipH + slice * (count - 1);
-  return (
-    <div style={{ position: "relative", width: size, height: stackH, flexShrink: 0 }}>
-      {[...Array(count)].map((_, i) => (
-        <div key={i} style={{ position: "absolute", top: (count - 1 - i) * slice, left: 0, filter: `brightness(${0.7 + (i / Math.max(count - 1, 1)) * 0.3})` }}>
-          <Chip3D amountBB={amountBB} size={size} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Timer do herói ─────────────────────────────────────────────────────────
-function Clock({ seconds, total = 30 }) {
-  const size = 38;
-  const col = seconds > 15 ? (C.pos || "#2ecc71") : seconds > 8 ? "#f5a623" : C.neg;
-  const cx = size / 2, cy = size / 2, R = size / 2 - 2, rArc = size / 2 - 5;
-  const circ = 2 * Math.PI * rArc;
-  const dash = circ * (seconds / total);
-  return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, flexShrink: 0 }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <circle cx={cx} cy={cy} r={R} fill="rgba(0,0,0,0.6)" stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
-        <circle cx={cx} cy={cy} r={rArc} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={2.5} />
-        <circle
-          cx={cx}
-          cy={cy}
-          r={rArc}
-          fill="none"
-          stroke={col}
-          strokeWidth={2.5}
-          strokeDasharray={`${dash} ${circ}`}
-          strokeLinecap="round"
-          transform={`rotate(-90 ${cx} ${cy})`}
-          style={{ transition: "stroke-dasharray 1s linear, stroke 0.4s" }}
-        />
-      </svg>
-      <span style={{ fontSize: 12, fontWeight: 800, color: col, lineHeight: 1 }}>{seconds}s</span>
-    </div>
-  );
-}
-
-function BetPill({ amount }) {
-  if (!amount) return null;
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 5,
-        padding: "3px 9px",
-        borderRadius: 999,
-        background: "rgba(6,12,8,0.82)",
-        border: `1px solid ${C.gold}66`,
-        marginTop: 2,
-      }}
-    >
-      <Chip3D amountBB={amount} size={14} />
-      <span style={{ fontSize: 12, fontWeight: 800, color: C.goldSoft, fontFamily: font }}>
-        {amount} <span style={{ opacity: 0.6, fontWeight: 600 }}>bb</span>
-      </span>
-    </div>
-  );
-}
-
-// ─── Seat de vilão (posição colorida, hover, presente sempre) ──────────────
-function Seat({ left, top, label, sub, stack, inHand }) {
-  const cfg = POS_CFG[label] || { bg: C.panel2, ring: C.line };
-  return (
-    <div
-      style={{
-        position: "absolute",
-        left,
-        top,
-        transform: "translate(-50%, -50%)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 4,
-        opacity: inHand ? 1 : 0.55,
-      }}
-    >
+/* ---------------------------- Carta aberta ---------------------------- */
+function Card({ card, size = "board" }) {
+  const s = size === "hero" ? { w: 62, h: 88, r: 22, g: 34 } : { w: 54, h: 76, r: 19, g: 29 };
+  if (!card) {
+    return (
       <div
-        className="pt-seat-circle"
         style={{
-          "--seat-glow": `${cfg.ring}77`,
-          display: "grid",
-          placeItems: "center",
-          width: 38,
-          height: 38,
-          borderRadius: "50%",
-          background: `linear-gradient(145deg,${cfg.bg}ee,${cfg.bg})`,
-          border: `2px solid ${cfg.ring}`,
-          color: "#fff",
-          fontWeight: 800,
-          fontSize: 12,
-          fontFamily: font,
-          letterSpacing: "0.02em",
+          width: s.w, height: s.h, borderRadius: 9,
+          border: `1px dashed ${C.line}`,
+          background: "rgba(255,255,255,.02)",
         }}
-      >
-        {label}
-      </div>
-
-      <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)" }}>{sub}</span>
-
-      {inHand && (
-        <>
-          <span style={{ fontSize: 14, fontWeight: 900, color: C.text, fontFamily: font, lineHeight: 1 }}>{stack}</span>
-          <div style={{ display: "flex", gap: 3, marginTop: 1 }}>
-            <Card faceDown size="mini" />
-            <Card faceDown size="mini" />
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-function FlyingChips({ chips, onDone }) {
-  return (
-    <>
-      <style>{`
-        @keyframes pt-fly-chip {
-          0% { transform: translate(0,0) scale(1); opacity: 1; }
-          75% { opacity: 1; }
-          100% { transform: translate(var(--dx), var(--dy)) scale(0.5); opacity: 0; }
-        }
-      `}</style>
-      {chips.map((c) => (
-        <div
-          key={c.id}
-          onAnimationEnd={() => onDone(c.id)}
-          style={{
-            position: "fixed",
-            left: c.from.x,
-            top: c.from.y,
-            zIndex: 9999,
-            pointerEvents: "none",
-            "--dx": `${c.to.x - c.from.x}px`,
-            "--dy": `${c.to.y - c.from.y}px`,
-            animation: "pt-fly-chip 0.5s cubic-bezier(.4,0,.2,1) forwards",
-            animationDelay: `${c.delay}ms`,
-          }}
-        >
-          <Chip3D amountBB={c.amountBB} size={18} />
-        </div>
-      ))}
-    </>
-  );
-}
-
-export default function PokerTable({ seats, pot, board, hero, children, heroTimer, betEvent }) {
-  const heroCircleRef = useRef(null);
-  const potRef = useRef(null);
-  const [flyChips, setFlyChips] = useState([]);
-  const flyId = useRef(0);
-  const lastEvent = useRef(null);
-
-  useEffect(() => {
-    if (!betEvent || betEvent === lastEvent.current) return;
-    lastEvent.current = betEvent;
-    const type = String(betEvent.action || "").toUpperCase();
-    if (type !== "CALL" && type !== "BET") return;
-    if (!heroCircleRef.current || !potRef.current) return;
-
-    const hr = heroCircleRef.current.getBoundingClientRect();
-    const pr = potRef.current.getBoundingClientRect();
-    const count = 3;
-    for (let i = 0; i < count; i++) {
-      const id = ++flyId.current;
-      setTimeout(() => {
-        setFlyChips((prev) => [
-          ...prev,
-          {
-            id,
-            from: { x: hr.left + hr.width / 2 - 9 + (i - 1) * 6, y: hr.top + hr.height / 2 - 9 },
-            to: { x: pr.left + pr.width / 2 - 9, y: pr.top + pr.height / 2 - 9 },
-            amountBB: betEvent.sizing || 1,
-            delay: 0,
-          },
-        ]);
-      }, i * 60);
-    }
-  }, [betEvent]);
-
-  const removeChip = (id) => setFlyChips((prev) => prev.filter((c) => c.id !== id));
-
-  // Preenche o board até 5 slots — revelados vêm do solver, os que faltam
-  // aparecem como espaços vazios rotulados, igual ao layout do Figma.
-  const paddedBoard = [...board];
-  while (paddedBoard.length < 5) {
-    const i = paddedBoard.length;
-    paddedBoard.push({ empty: true, label: i === 3 ? "Turn" : i === 4 ? "River" : undefined });
+      />
+    );
   }
-
-  const heroBetAmount =
-    betEvent && ["CALL", "BET"].includes(String(betEvent.action || "").toUpperCase()) ? betEvent.sizing : undefined;
-
-  const heroSeat = seats.find((s) => s.active) || {};
-  const villainSeats = seats.filter((s) => !s.active);
-  const potCount = Math.min(5, Math.max(2, Math.ceil((Number(pot) || 0) / 20)));
-
+  const rank = card.slice(0, -1);
+  const su = SUITS[card.slice(-1)];
   return (
     <div
       style={{
-        position: "relative",
-        borderRadius: 20,
-        overflow: "hidden",
-        background: "#000000",
-        border: `1px solid ${C.line}`,
-        padding: 14,
-        boxSizing: "border-box",
-        display: "flex",
-        flexDirection: "column",
-        gap: 14,
+        width: s.w, height: s.h, borderRadius: 9,
+        background: "linear-gradient(160deg,#FFFFFF 0%,#F2F6FA 55%,#E4EBF2 100%)",
+        boxShadow: "0 8px 18px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.9) inset",
+        position: "relative", fontFamily: font, color: su.c, overflow: "hidden",
       }}
     >
-      <style>{`
-        .pt-seat-circle { transition: transform .15s ease, box-shadow .15s ease; cursor: default; }
-        .pt-seat-circle:hover { transform: scale(1.1); box-shadow: 0 0 0 4px var(--seat-glow, transparent), 0 0 18px var(--seat-glow, transparent); }
-      `}</style>
+      <span style={{ position: "absolute", top: 4, left: 6, fontSize: s.r, fontWeight: 800, lineHeight: 1 }}>{rank}</span>
+      <span style={{ position: "absolute", top: s.r + 5, left: 7, fontSize: 13 }}>{su.g}</span>
+      <span style={{ position: "absolute", right: 6, bottom: 5, fontSize: s.g, opacity: 0.9 }}>{su.g}</span>
+    </div>
+  );
+}
 
-      <div
-        style={{
-          position: "relative",
-          height: 480,
-          borderRadius: "50%",
-          background: "radial-gradient(ellipse at 50% 35%, #1a5c42 0%, #0f3d2c 50%, #08251b 100%)",
-          boxShadow: "inset 0 10px 50px rgba(0,0,0,0.7), inset 0 0 120px rgba(0,0,0,0.4)",
-          overflow: "hidden",
-        }}
-      >
-        <div style={{ position: "absolute", inset: "6%", borderRadius: "50%", border: "1px solid rgba(255,255,255,0.04)", pointerEvents: "none" }} />
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: "12%",
-            transform: "translateX(-50%)",
-            fontSize: 10,
-            fontWeight: 900,
-            letterSpacing: "0.5em",
-            color: "rgba(255,255,255,0.05)",
-            fontFamily: font,
-            whiteSpace: "nowrap",
-            pointerEvents: "none",
-          }}
-        >
-          POKERSYNC
-        </div>
+/* --------------------------- Cartas viradas ---------------------------
+   Leque com rotação simétrica e wrapper com padding — nada de clipping. */
+function FacedownPair({ side }) {
+  const back = (rot, z) => (
+    <div
+      style={{
+        width: 26, height: 37, borderRadius: 5, transform: `rotate(${rot}deg)`,
+        marginLeft: z ? -9 : 0,
+        background: "linear-gradient(150deg,#1E3A5F 0%,#16324F 50%,#0E2338 100%)",
+        boxShadow: "0 4px 10px rgba(0,0,0,.6), 0 0 0 1px rgba(120,180,255,.28) inset",
+        position: "relative",
+      }}
+    >
+      <div style={{
+        position: "absolute", inset: 4, borderRadius: 3,
+        border: "1px solid rgba(120,180,255,.22)",
+        background: "repeating-linear-gradient(45deg,rgba(120,180,255,.10) 0 2px,transparent 2px 4px)",
+      }} />
+    </div>
+  );
+  return (
+    <div style={{ display: "flex", alignItems: "center", padding: 4, filter: "drop-shadow(0 0 6px rgba(0,0,0,.5))" }}>
+      {back(side === "left" ? 8 : -8, false)}
+      {back(side === "left" ? -6 : 6, true)}
+    </div>
+  );
+}
 
-        {/* Board */}
-        <div style={{ position: "absolute", left: "50%", top: "36%", transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-          <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.22em", color: "rgba(255,255,255,0.2)", fontFamily: font }}>
-            FLOP · TURN · RIVER
-          </div>
-          <div style={{ display: "flex", gap: 7 }}>
-            {paddedBoard.map((c, i) => (
-              <Card key={i} {...c} size="board" />
+/* -------------------------- Badge de ação ---------------------------- */
+const ACT = {
+  fold:  { label: "Fold",  bg: "rgba(120,130,145,.18)", fg: "#9AA5B4", bd: "rgba(150,160,175,.35)" },
+  check: { label: "Check", bg: "rgba(56,189,248,.14)",  fg: "#7DD3FC", bd: "rgba(56,189,248,.45)" },
+  call:  { label: "Call",  bg: "rgba(34,197,94,.16)",   fg: "#4ADE80", bd: "rgba(34,197,94,.5)" },
+  bet:   { label: "Bet",   bg: "rgba(249,115,22,.18)",  fg: "#FDBA74", bd: "rgba(249,115,22,.55)" },
+  raise: { label: "Raise", bg: "rgba(239,68,68,.18)",   fg: "#FCA5A5", bd: "rgba(239,68,68,.55)" },
+};
+
+function ActionBadge({ action }) {
+  if (!action) return null;
+  const a = ACT[action.type] || ACT.check;
+  return (
+    <div style={{
+      padding: "2px 8px", borderRadius: 999, background: a.bg, color: a.fg,
+      border: `1px solid ${a.bd}`, fontSize: 10.5, fontWeight: 700, letterSpacing: .3,
+      whiteSpace: "nowrap", fontFamily: font, backdropFilter: "blur(4px)",
+    }}>
+      {a.label}{action.size ? ` ${action.size}bb` : ""}
+    </div>
+  );
+}
+
+/* ------------------------------ Assento ------------------------------ */
+function Seat({ seat, state }) {
+  const color = POS[seat.pos];
+  const { status, stack, action, hero, cards } = state; // status: empty | folded | live | acting
+  const acting = status === "acting";
+  const folded = status === "folded";
+  const empty = status === "empty";
+
+  const opacity = empty ? 0.28 : folded ? 0.42 : 1;
+  const dir = seat.card;
+
+  const facedown = !hero && (status === "live" || acting);
+
+  const avatar = (
+    <div style={{ position: "relative", width: 54, height: 54 }}>
+      {/* 3) Anel + timer aparecem SÓ em quem está na ação */}
+      {acting && (
+        <svg width="54" height="54" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
+          <circle cx="27" cy="27" r="25" fill="none" stroke="rgba(255,255,255,.10)" strokeWidth="3" />
+          <circle
+            cx="27" cy="27" r="25" fill="none" stroke={color.glow} strokeWidth="3"
+            strokeLinecap="round" strokeDasharray="157" strokeDashoffset="42"
+            style={{ filter: `drop-shadow(0 0 6px ${color.glow})` }}
+          />
+        </svg>
+      )}
+      <div style={{
+        position: "absolute", inset: 6, borderRadius: "50%",
+        background: empty
+          ? "rgba(255,255,255,.04)"
+          : `radial-gradient(120% 120% at 30% 25%, ${color.glow} 0%, ${color.base} 60%, rgba(0,0,0,.35) 130%)`,
+        border: empty ? `1px dashed ${C.line}` : `1px solid rgba(255,255,255,.28)`,
+        boxShadow: acting
+          ? `0 0 22px ${color.glow}, 0 0 0 2px rgba(255,255,255,.25) inset`
+          : empty ? "none" : `0 6px 14px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.10) inset`,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        color: empty ? C.dim : "#fff", fontWeight: 800, fontSize: 13, fontFamily: font,
+        letterSpacing: .2, textShadow: "0 1px 2px rgba(0,0,0,.5)",
+      }}>
+        {seat.pos}
+      </div>
+    </div>
+  );
+
+  const info = (
+    <div style={{ textAlign: "center", fontFamily: font, lineHeight: 1.25 }}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: empty ? C.dim : C.text }}>
+        {empty ? "—" : `${stack} bb`}
+      </div>
+      {hero && <div style={{ fontSize: 9.5, color: color.glow, fontWeight: 700, letterSpacing: 1 }}>VOCÊ</div>}
+    </div>
+  );
+
+  const block = (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+      {avatar}
+      {info}
+      <div style={{ minHeight: 18, display: "flex", alignItems: "center" }}>
+        {acting
+          ? <div style={{ fontSize: 10, fontWeight: 700, color: color.glow, letterSpacing: .6, fontFamily: font }}>NA AÇÃO</div>
+          : <ActionBadge action={action} />}
+      </div>
+    </div>
+  );
+
+  const layout = {
+    below: { flexDirection: "column", gap: 2 },
+    above: { flexDirection: "column-reverse", gap: 2 },
+    left:  { flexDirection: "row-reverse", alignItems: "center", gap: 2 },
+    right: { flexDirection: "row", alignItems: "center", gap: 2 },
+  }[dir];
+
+  return (
+    <div style={{
+      position: "absolute", left: `${seat.x}%`, top: `${seat.y}%`,
+      transform: "translate(-50%,-50%)", opacity,
+      transition: "opacity .25s ease", zIndex: acting ? 5 : 2,
+    }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", ...layout }}>
+        {block}
+        {facedown && <FacedownPair side={dir === "left" ? "left" : "right"} />}
+        {hero && cards && (
+          <div style={{ display: "flex", gap: 6, paddingBottom: 4 }}>
+            {cards.map((c, i) => (
+              <div key={i} style={{ transform: `rotate(${i === 0 ? -5 : 5}deg)` }}>
+                <Card card={c} size="hero" />
+              </div>
             ))}
           </div>
-        </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
-        {/* Pote — fichas 3D somando ao centro */}
-        <div ref={potRef} style={{ position: "absolute", left: "50%", top: "56%", transform: "translate(-50%,-50%)" }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "6px 18px 6px 10px",
-              borderRadius: 999,
-              background: "rgba(4,20,12,0.8)",
-              border: `1px solid ${C.gold}55`,
-              boxShadow: `0 0 20px ${C.gold}1a`,
-            }}
-          >
-            <ChipStack amountBB={Number(pot) || 0} count={potCount} size={18} />
-            <span style={{ fontSize: 20, fontWeight: 900, color: C.text, fontFamily: font }}>
-              {pot} <span style={{ fontSize: 13, opacity: 0.55, fontWeight: 700 }}>bb</span>
-            </span>
-          </div>
-        </div>
+/* ---------------------------- Mesa completa ---------------------------- */
+export function PokerTable({ hand, onOpenFilters = () => {} }) {
+  const active = !!hand;
+  const seatData = (pos) => (hand?.seats?.[pos]) || { status: "empty" };
 
-        {/* Vilões — todos os 7 lugares aparecem sempre, coloridos por posição */}
-        {villainSeats.map((s, i) => (
-          <Seat key={i} {...s} />
-        ))}
+  return (
+    <div style={{
+      background: C.bg, padding: "18px 16px 26px", fontFamily: font,
+      borderRadius: 20, position: "relative",
+    }}>
+      {/* 5) Linha do tempo da mão — o que já aconteceu, rua a rua */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8, marginBottom: 12,
+        padding: "8px 12px", borderRadius: 12,
+        background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015))",
+        border: `1px solid ${C.line}`, minHeight: 38, overflowX: "auto",
+      }}>
+        {active ? (
+          hand.history.map((h, i) => (
+            <React.Fragment key={i}>
+              <span style={{
+                fontSize: 9.5, fontWeight: 800, letterSpacing: 1.2,
+                color: h.current ? "#FFFFFF" : C.dim,
+              }}>
+                {h.street}
+              </span>
+              <div style={{ display: "flex", gap: 5 }}>
+                {h.actions.map((a, j) => (
+                  <span key={j} style={{
+                    fontSize: 10.5, fontWeight: 700, fontFamily: font,
+                    color: POS[a.pos]?.glow, opacity: h.current ? 1 : .55,
+                    padding: "2px 7px", borderRadius: 999,
+                    background: `${POS[a.pos]?.base}1F`,
+                    border: `1px solid ${POS[a.pos]?.base}55`,
+                  }}>
+                    {a.pos} {a.label}
+                  </span>
+                ))}
+              </div>
+              {i < hand.history.length - 1 && <span style={{ color: C.line }}>|</span>}
+            </React.Fragment>
+          ))
+        ) : (
+          <span style={{ fontSize: 11.5, color: C.dim, letterSpacing: .4 }}>
+            Nenhuma mão carregada
+          </span>
+        )}
       </div>
 
-      {/* Faixa do herói + cartas + ações — fluxo normal, sem sobrepor nada */}
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {heroTimer !== undefined && <Clock seconds={heroTimer} total={30} />}
-          <div
-            ref={heroCircleRef}
-            className="pt-seat-circle"
-            style={{
-              "--seat-glow": `${(POS_CFG[heroSeat.label] || {}).ring || C.gold}77`,
-              display: "grid",
-              placeItems: "center",
-              width: 48,
-              height: 48,
-              borderRadius: "50%",
-              background: `linear-gradient(145deg,${(POS_CFG[heroSeat.label] || {}).bg || "#1a4a3a"}ee,${(POS_CFG[heroSeat.label] || {}).bg || "#0d2a20"})`,
-              border: `3px solid ${(POS_CFG[heroSeat.label] || {}).ring || C.gold}`,
-              color: "#fff",
-              fontWeight: 800,
-              fontSize: 14,
-              fontFamily: font,
-            }}
-          >
-            {heroSeat.label}
+      {/* Mesa */}
+      <div style={{ position: "relative", width: "100%", paddingBottom: "62%" }}>
+        <div style={{ position: "absolute", inset: 0 }}>
+          {/* 7) Feltro com brilho: aro externo + rim light + vinheta */}
+          <div style={{
+            position: "absolute", inset: "6% 3%",
+            borderRadius: "50%",
+            background: `
+              radial-gradient(60% 70% at 50% 38%, #1FA97B 0%, #14795A 38%, #0C5240 66%, #06301F 100%)`,
+            boxShadow: `
+              0 0 0 10px #0F1418,
+              0 0 0 11px rgba(255,255,255,.10),
+              0 0 60px rgba(31,169,123,.28),
+              0 30px 60px rgba(0,0,0,.65),
+              inset 0 2px 40px rgba(255,255,255,.10),
+              inset 0 -20px 60px rgba(0,0,0,.45)`,
+          }}>
+            <div style={{
+              position: "absolute", inset: 0, borderRadius: "50%",
+              background: "radial-gradient(50% 40% at 50% 30%, rgba(255,255,255,.14), transparent 70%)",
+              pointerEvents: "none",
+            }} />
           </div>
-          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2 }}>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{heroSeat.sub}</span>
-            <span style={{ fontSize: 18, fontWeight: 900, color: C.text, fontFamily: font }}>{heroSeat.stack}</span>
-          </div>
-          <BetPill amount={heroBetAmount} />
-        </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          {hero.map((c, i) => (
-            <Card key={i} {...c} size="hero" />
+          {/* Centro: board + pote, ou estado zerado */}
+          <div style={{
+            position: "absolute", left: "50%", top: "44%", transform: "translate(-50%,-50%)",
+            display: "flex", flexDirection: "column", alignItems: "center", gap: 12, zIndex: 3,
+          }}>
+            {active ? (
+              <>
+                <div style={{ display: "flex", gap: 7 }}>
+                  {hand.board.map((c, i) => <Card key={i} card={c} />)}
+                </div>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 7,
+                  padding: "7px 16px", borderRadius: 999,
+                  background: "linear-gradient(180deg,rgba(10,20,16,.92),rgba(4,10,8,.92))",
+                  border: "1px solid rgba(255,255,255,.16)",
+                  boxShadow: "0 8px 22px rgba(0,0,0,.55), 0 0 18px rgba(31,169,123,.25)",
+                }}>
+                  <span style={{ width: 12, height: 12, borderRadius: "50%", background: "linear-gradient(180deg,#34D399,#0F766E)", boxShadow: "0 0 8px #34D399" }} />
+                  <span style={{ color: "#fff", fontWeight: 800, fontSize: 17 }}>{hand.pot}</span>
+                  <span style={{ color: C.dim, fontSize: 11, fontWeight: 700 }}>bb</span>
+                </div>
+              </>
+            ) : (
+              /* 6) Estado zerado: mesa vazia, convite claro à ação */
+              <div style={{ textAlign: "center", maxWidth: 300 }}>
+                <div style={{ display: "flex", gap: 7, justifyContent: "center", marginBottom: 16 }}>
+                  {[0, 1, 2, 3, 4].map((i) => <Card key={i} card={null} />)}
+                </div>
+                <div style={{ color: C.text, fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
+                  Escolha os filtros para começar
+                </div>
+                <div style={{ color: C.dim, fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>
+                  Defina stack, posição e rua. Só mãos que existem na base aparecem aqui.
+                </div>
+                <button
+                  onClick={onOpenFilters}
+                  style={{
+                    padding: "9px 20px", borderRadius: 10, cursor: "pointer",
+                    background: "linear-gradient(180deg,#A855F7,#7E22CE)",
+                    color: "#fff", fontWeight: 800, fontSize: 13, fontFamily: font,
+                    border: "1px solid rgba(255,255,255,.25)",
+                    boxShadow: "0 8px 20px rgba(168,85,247,.35)",
+                  }}
+                >
+                  Abrir filtros
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Assentos — sempre os 8 */}
+          {SEATS.map((s) => (
+            <Seat key={s.pos} seat={s} state={{ ...seatData(s.pos), hero: s.hero }} />
           ))}
         </div>
-
-        {children}
       </div>
+    </div>
+  );
+}
 
-      <FlyingChips chips={flyChips} onDone={removeChip} />
+/* ------------------------------------------------------------------
+   DEMO — apaga este bloco ao integrar; DrillView passa `hand`.
+-------------------------------------------------------------------*/
+export default function PokerTableDemo() {
+  const [on, setOn] = useState(true);
+  const hand = {
+    pot: 18,
+    board: ["Ah", "Kd", "5c", "2s", null],
+    history: [
+      { street: "PRÉ", actions: [{ pos: "BTN", label: "2.5" }, { pos: "BB", label: "call" }] },
+      { street: "FLOP", current: true, actions: [{ pos: "BB", label: "check" }, { pos: "BTN", label: "bet 6" }] },
+    ],
+    seats: {
+      UTG:     { status: "folded", stack: 31, action: { type: "fold" } },
+      "UTG+1": { status: "folded", stack: 31, action: { type: "fold" } },
+      MP:      { status: "empty" },
+      HJ:      { status: "folded", stack: 31, action: { type: "fold" } },
+      CO:      { status: "empty" },
+      BB:      { status: "acting", stack: 28.5 },
+      BTN:     { status: "live", stack: 25, action: { type: "bet", size: 6 }, cards: ["7s", "6h"] },
+      SB:      { status: "folded", stack: 30.5, action: { type: "fold" } },
+    },
+  };
+  return (
+    <div style={{ background: C.bg, minHeight: "100vh", padding: 20 }}>
+      <button
+        onClick={() => setOn(!on)}
+        style={{ marginBottom: 14, padding: "7px 14px", borderRadius: 8, background: C.panel, color: C.text, border: `1px solid ${C.line}`, fontFamily: font, fontSize: 12, cursor: "pointer" }}
+      >
+        {on ? "Ver estado zerado" : "Ver mão carregada"}
+      </button>
+      <PokerTable hand={on ? hand : null} />
     </div>
   );
 }
