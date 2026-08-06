@@ -1,29 +1,43 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Filter, X } from "lucide-react";
 
 /* ==================================================================
-   FilterDrawer — versão corrigida
+   FilterDrawer v3 — filtro ciente dos dados
 
-   MUDANÇAS
-   1. `open` deixou de ser estado interno. Vem do pai por prop, senão
-      qualquer remontagem do DrillView (loading, error, empty) apaga
-      o estado e o drawer fecha sozinho.
-   2. Seleção vira RASCUNHO local. Nada é aplicado até o clique em
-      "Aplicar filtros" — antes, cada pill disparava um refetch, que
-      derrubava a tela inteira no early return de loading.
-   3. Clicar numa pill já ativa desmarca (volta a "todas").
+   O problema: SB + vs Open não existe na base (SB só tem 3-Bet, BTN só
+   tem vs Open). O drawer oferecia 18 combinações e 6 levavam à tela
+   vazia. Agora ele desabilita em cascata o que não tem spot e mostra a
+   contagem de cada opção.
 
    PROPS
-   open: bool
-   onOpen / onClose: () => void
-   filters: objeto atual do useFilters
-   onSet: (key, value) => void     // value null = limpar aquela chave
-   onReset: () => void
-   activeCount: number
+   open, onOpen, onClose, filters, onSet, onReset, activeCount
+   facets: [{ position, action, street, n }]   ← combinações reais
+           Opcional. Se não vier, usa FACETS_FALLBACK abaixo.
 
-   ATENÇÃO: o `onSet` precisa aceitar `null` para limpar uma chave.
-   Se o useFilters ignorar null, troque a linha marcada em `apply()`.
+   O ideal é o backend expor isto e o drawer consumir, para o filtro
+   nunca dessincronizar de uma nova importação de spots:
+
+     GET /api/drills/facets
+     select position, action, street, count(*)::int as n
+       from drills group by 1,2,3;
 ===================================================================*/
+
+// Snapshot da base em 06/08/2026 — 2.500 spots. Só fallback: se novos
+// spots forem importados, isto envelhece silenciosamente.
+const FACETS_FALLBACK = [
+  { position: "BB", action: "vs Open", street: "Flop", n: 50 },
+  { position: "BB", action: "vs Open", street: "Turn", n: 300 },
+  { position: "BB", action: "vs Open", street: "River", n: 900 },
+  { position: "BB", action: "3-Bet", street: "Flop", n: 30 },
+  { position: "BB", action: "3-Bet", street: "Turn", n: 180 },
+  { position: "BB", action: "3-Bet", street: "River", n: 540 },
+  { position: "BTN", action: "vs Open", street: "Flop", n: 10 },
+  { position: "BTN", action: "vs Open", street: "Turn", n: 60 },
+  { position: "BTN", action: "vs Open", street: "River", n: 180 },
+  { position: "SB", action: "3-Bet", street: "Flop", n: 10 },
+  { position: "SB", action: "3-Bet", street: "Turn", n: 60 },
+  { position: "SB", action: "3-Bet", street: "River", n: 180 },
+];
 
 const SECTIONS = [
   { key: "position", label: "Posição", options: ["BB", "BTN", "SB"] },
@@ -33,28 +47,46 @@ const SECTIONS = [
 
 const FF = '"Space Grotesk", sans-serif';
 
-function Pill({ label, active, onClick }) {
+function Pill({ label, count, active, disabled, onClick }) {
   const [h, setH] = useState(false);
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
+      title={disabled ? "Sem mãos para esta combinação" : `${count} mãos`}
       style={{
-        padding: "5px 12px",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "5px 10px 5px 12px",
         borderRadius: 8,
         fontSize: 12,
         fontWeight: 600,
         fontFamily: FF,
-        cursor: "pointer",
-        border: active ? "1px solid rgba(255,255,255,0.9)" : "1px solid rgba(255,255,255,0.08)",
-        background: active ? "#FFFFFF" : h ? "rgba(255,255,255,0.06)" : "#1E1E1E",
-        color: active ? "#111111" : h ? "#FFFFFF" : "rgba(255,255,255,0.45)",
+        cursor: disabled ? "not-allowed" : "pointer",
+        border: active
+          ? "1px solid rgba(255,255,255,0.9)"
+          : disabled
+          ? "1px dashed rgba(255,255,255,0.07)"
+          : "1px solid rgba(255,255,255,0.08)",
+        background: active ? "#FFFFFF" : disabled ? "transparent" : h ? "rgba(255,255,255,0.06)" : "#1E1E1E",
+        color: active ? "#111111" : disabled ? "rgba(255,255,255,0.18)" : h ? "#FFFFFF" : "rgba(255,255,255,0.45)",
+        textDecoration: disabled ? "line-through" : "none",
         transition: "all .2s",
         whiteSpace: "nowrap",
       }}
     >
       {label}
+      {!disabled && (
+        <span style={{
+          fontSize: 9.5, fontWeight: 700, fontVariantNumeric: "tabular-nums",
+          color: active ? "rgba(17,17,17,0.5)" : "rgba(255,255,255,0.28)",
+        }}>
+          {count}
+        </span>
+      )}
     </button>
   );
 }
@@ -67,15 +99,15 @@ export default function FilterDrawer({
   onSet,
   onReset,
   activeCount = 0,
+  facets,
 }) {
-  // Rascunho: espelha os filtros aplicados sempre que o drawer abre.
+  const rows = facets && facets.length ? facets : FACETS_FALLBACK;
   const [draft, setDraft] = useState(filters);
 
   useEffect(() => {
     if (open) setDraft(filters);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ESC fecha sem aplicar
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => e.key === "Escape" && onClose();
@@ -83,136 +115,142 @@ export default function FilterDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const toggle = (key, opt) =>
-    setDraft((d) => ({ ...d, [key]: d[key] === opt ? null : opt }));
+  /* Contagem de cada opção considerando as OUTRAS dimensões já escolhidas.
+     Opção com 0 fica desabilitada — é o que impede SB + vs Open. */
+  const counts = useMemo(() => {
+    const out = {};
+    SECTIONS.forEach(({ key, options }) => {
+      out[key] = {};
+      options.forEach((opt) => {
+        out[key][opt] = rows
+          .filter((r) => r[key] === opt)
+          .filter((r) => SECTIONS.every(({ key: k }) => k === key || !draft[k] || r[k] === draft[k]))
+          .reduce((s, r) => s + r.n, 0);
+      });
+    });
+    return out;
+  }, [rows, draft]);
+
+  const total = useMemo(
+    () =>
+      rows
+        .filter((r) => SECTIONS.every(({ key }) => !draft[key] || r[key] === draft[key]))
+        .reduce((s, r) => s + r.n, 0),
+    [rows, draft]
+  );
+
+  /* Ao trocar uma dimensão, limpa as outras que ficariam impossíveis:
+     escolher SB com "vs Open" marcado limpa a situação em vez de montar
+     um filtro sem resultado. */
+  const toggle = (key, opt) => {
+    setDraft((d) => {
+      const next = { ...d, [key]: d[key] === opt ? null : opt };
+      SECTIONS.forEach(({ key: k }) => {
+        if (k === key || !next[k]) return;
+        const ok = rows.some((r) => SECTIONS.every(({ key: kk }) => !next[kk] || r[kk] === next[kk]));
+        if (!ok) next[k] = null;
+      });
+      return next;
+    });
+  };
 
   const apply = () => {
     SECTIONS.forEach(({ key }) => {
       const next = draft[key] ?? null;
-      if (next !== (filters[key] ?? null)) {
-        onSet(key, next); // ← se o useFilters não aceitar null, use onSet(key, "")
-      }
+      if (next !== (filters[key] ?? null)) onSet(key, next);
     });
     onClose();
   };
-
-  const clearDraft = () => setDraft({});
 
   const draftCount = SECTIONS.filter(({ key }) => draft[key]).length;
   const dirty = SECTIONS.some(({ key }) => (draft[key] ?? null) !== (filters[key] ?? null));
 
   return (
     <>
-      {/* Trigger */}
       <button
         onClick={onOpen}
         title="Filtros"
         style={{
-          position: "relative",
-          display: "grid",
-          placeItems: "center",
-          width: 38,
-          height: 38,
-          borderRadius: 10,
+          position: "relative", display: "grid", placeItems: "center",
+          width: 38, height: 38, borderRadius: 10,
           background: activeCount > 0 ? "rgba(255,255,255,0.1)" : "#1E1E1E",
           border: activeCount > 0 ? "1px solid rgba(255,255,255,0.25)" : "1px solid rgba(255,255,255,0.08)",
           color: activeCount > 0 ? "#FFFFFF" : "rgba(255,255,255,0.45)",
-          cursor: "pointer",
-          transition: "all .2s",
+          cursor: "pointer", transition: "all .2s",
         }}
       >
         <Filter size={16} strokeWidth={1.5} />
         {activeCount > 0 && (
-          <span
-            style={{
-              position: "absolute", top: -4, right: -4, width: 16, height: 16,
-              borderRadius: "50%", background: "#FFFFFF", color: "#111111",
-              fontSize: 9, fontWeight: 800, display: "grid", placeItems: "center", lineHeight: 1,
-            }}
-          >
+          <span style={{
+            position: "absolute", top: -4, right: -4, width: 16, height: 16,
+            borderRadius: "50%", background: "#FFFFFF", color: "#111111",
+            fontSize: 9, fontWeight: 800, display: "grid", placeItems: "center", lineHeight: 1,
+          }}>
             {activeCount}
           </span>
         )}
       </button>
 
-      {/* Overlay */}
       {open && (
-        <div
-          onClick={onClose}
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
-            zIndex: 100, backdropFilter: "blur(4px)",
-          }}
-        />
+        <div onClick={onClose} style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
+          zIndex: 100, backdropFilter: "blur(4px)",
+        }} />
       )}
 
-      {/* Drawer — stopPropagation por garantia, caso algum dia ele passe
-          a ser filho do overlay */}
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
           position: "fixed", top: 0, right: 0, width: 340, height: "100vh",
-          background: "#111111",
-          borderLeft: "1px solid rgba(255,255,255,0.06)",
-          boxShadow: "-20px 0 60px rgba(0,0,0,0.5)",
-          zIndex: 101, display: "flex", flexDirection: "column",
+          background: "#111111", borderLeft: "1px solid rgba(255,255,255,0.06)",
+          boxShadow: "-20px 0 60px rgba(0,0,0,0.5)", zIndex: 101,
+          display: "flex", flexDirection: "column",
           transform: open ? "translateX(0)" : "translateX(100%)",
           transition: "transform .3s cubic-bezier(0.4,0,0.2,1)",
-          fontFamily: FF,
           visibility: open ? "visible" : "hidden",
+          fontFamily: FF,
         }}
       >
-        {/* Header */}
-        <div
-          style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "20px 20px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)",
-          }}
-        >
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "20px 20px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)",
+        }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Filter size={15} color="#FFFFFF" strokeWidth={1.5} />
             <span style={{ fontSize: 14, fontWeight: 700, color: "#FFFFFF" }}>Filtros</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {draftCount > 0 && (
-              <button
-                onClick={clearDraft}
-                style={{
-                  background: "none", border: 0, color: "rgba(255,255,255,0.35)",
-                  fontSize: 11, fontWeight: 600, cursor: "pointer",
-                  textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: FF,
-                }}
-              >
+              <button onClick={() => setDraft({})} style={{
+                background: "none", border: 0, color: "rgba(255,255,255,0.35)",
+                fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: FF,
+                textTransform: "uppercase", letterSpacing: "0.06em",
+              }}>
                 Limpar
               </button>
             )}
-            <button
-              onClick={onClose}
-              style={{
-                display: "grid", placeItems: "center", width: 30, height: 30,
-                borderRadius: 8, background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                color: "rgba(255,255,255,0.45)", cursor: "pointer",
-              }}
-            >
+            <button onClick={onClose} style={{
+              display: "grid", placeItems: "center", width: 30, height: 30, borderRadius: 8,
+              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+              color: "rgba(255,255,255,0.45)", cursor: "pointer",
+            }}>
               <X size={14} />
             </button>
           </div>
         </div>
 
-        {/* Seções */}
         <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px" }}>
           <p style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 18, lineHeight: 1.5 }}>
             MTT · ChipEV · 40bb — todas as mãos disponíveis hoje são deste formato.
+            Opções riscadas não têm spot na base.
           </p>
+
           {SECTIONS.map((section) => (
             <div key={section.key} style={{ marginBottom: 22 }}>
-              <p
-                style={{
-                  fontSize: 10, fontWeight: 600, textTransform: "uppercase",
-                  letterSpacing: "0.14em", color: "rgba(255,255,255,0.3)", marginBottom: 8,
-                }}
-              >
+              <p style={{
+                fontSize: 10, fontWeight: 600, textTransform: "uppercase",
+                letterSpacing: "0.14em", color: "rgba(255,255,255,0.3)", marginBottom: 8,
+              }}>
                 {section.label}
               </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
@@ -220,7 +258,9 @@ export default function FilterDrawer({
                   <Pill
                     key={opt}
                     label={String(opt)}
+                    count={counts[section.key][opt]}
                     active={draft[section.key] === opt}
+                    disabled={counts[section.key][opt] === 0}
                     onClick={() => toggle(section.key, opt)}
                   />
                 ))}
@@ -229,24 +269,21 @@ export default function FilterDrawer({
           ))}
         </div>
 
-        {/* Footer */}
         <div style={{ padding: "16px 20px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <button
             onClick={apply}
+            disabled={total === 0}
             style={{
               width: "100%", padding: 12, borderRadius: 10, border: 0,
-              background: "#FFFFFF", color: "#111111", fontSize: 13, fontWeight: 700,
-              cursor: "pointer", textTransform: "uppercase", letterSpacing: "0.04em",
-              fontFamily: FF,
+              background: total === 0 ? "#2A2A2A" : "#FFFFFF",
+              color: total === 0 ? "rgba(255,255,255,0.3)" : "#111111",
+              fontSize: 13, fontWeight: 700, fontFamily: FF,
+              cursor: total === 0 ? "not-allowed" : "pointer",
+              textTransform: "uppercase", letterSpacing: "0.04em",
             }}
           >
-            {dirty ? "Aplicar filtros" : "Fechar"}
+            {dirty ? `Aplicar · ${total} mãos` : "Fechar"}
           </button>
-          {dirty && (
-            <p style={{ fontSize: 10.5, color: "rgba(255,255,255,0.3)", marginTop: 8, textAlign: "center" }}>
-              As mãos são recarregadas ao aplicar.
-            </p>
-          )}
         </div>
       </div>
     </>

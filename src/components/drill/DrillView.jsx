@@ -8,6 +8,7 @@ import FilterDrawer from "./FilterDrawer.jsx";
 import ScenarioBar from "./ScenarioBar.jsx";
 import { useDrillBatch } from "../../services/useDrillBatch.js";
 import { useFilters } from "../../services/useFilters.js";
+import { useFacets } from "../../services/useFacets.js";
 import { parseBoard, parseHeroCombo } from "../../utils/parseBoard.js";
 
 /* ==================================================================
@@ -43,6 +44,7 @@ function parseActionString(raw) {
 export default function DrillView({ onBack }) {
   const { filters, set: setFilter, reset: resetFilters, activeCount, queryString } = useFilters();
   const { hands, loading, error, reload } = useDrillBatch(20, queryString);
+  const facets = useFacets();
 
   // Estado do drawer sobe para cá: sobrevive a loading, error e vazio.
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -286,6 +288,7 @@ export default function DrillView({ onBack }) {
             onSet={setFilter}
             onReset={resetFilters}
             activeCount={activeCount}
+            facets={facets}
           />
 
           {userAction && hand && (
