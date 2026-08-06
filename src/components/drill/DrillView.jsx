@@ -11,20 +11,21 @@ import { useFacets } from "../../services/useFacets.js";
 import { parseBoard, parseHeroCombo } from "../../utils/parseBoard.js";
 
 /* ==================================================================
-   LAYOUT SEM SCROLL
+   LAYOUT FULLSCREEN SEM SCROLL
 
-   Container = 100vh, flex column, overflow hidden. Cada bloco ocupa
-   sua faixa fixa; a mesa é a única que se expande (flex: 1) para
-   preencher o que sobrar.
+   Container = position:fixed inset:0. Tira o DrillView do fluxo do App
+   (Dashboard etc.) — o wrapper pai não influencia mais a altura, então
+   o scroll externo não aparece. Um useEffect bloqueia overflow do
+   body enquanto a tela está montada, garantindo que nada rola atrás.
 
-     header       ~48px fixo — inclui a strip de sessão inline
-     context bar  ~48px fixo — cenário + gatilho do FilterDrawer
-     mesa          flex:1  — cresce/encolhe conforme a viewport
-     rodapé       ~80px fixo — ActionBar OU GtoFeedback
+   Estrutura interna:
+     header       flex-shrink:0  — voltar + título + sessão inline + próxima
+     context bar  flex-shrink:0  — cenário + gatilho do FilterDrawer
+     mesa          flex:1        — centralizada, com maxWidth/maxHeight
+     rodapé       flex-shrink:0  — ActionBar OU GtoFeedback
 
-   O PokerTable perdeu o slot `children` de novo: a barra de ação vive
-   fora dele, como irmã. Isso deixa o rodapé com altura previsível
-   independentemente do que o PokerTable renderiza por dentro.
+   A mesa nunca cresce além de 820×460. Em widescreen sobra ar em
+   volta; em viewport pequena, ela encolhe pra caber.
 ===================================================================*/
 
 const SEAT_INVOLVEMENT = [
@@ -58,10 +59,58 @@ function parseActionString(raw) {
   return { type, sizing };
 }
 
+/* Animações globais compartilhadas por toda a tela */
+const GLOBAL_ANIMATIONS = `
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+    50% { box-shadow: 0 0 0 4px rgba(255,255,255,0.06); }
+  }
+`;
+
 /* ------------------------------------------------------------------
-   Barra de contexto — controle primário do cenário. Sem overflow-x:
-   com no máximo 3 chips (posição/ação/rua) cabe em qualquer viewport.
+   Barra de contexto com hover mais vivo nos chips
 -------------------------------------------------------------------*/
+function ContextChip({ chip, onClick }) {
+  const [h, setH] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setH(true)}
+      onMouseLeave={() => setH(false)}
+      title={`${chip.label}: ${chip.value}`}
+      style={{
+        ...font,
+        display: "flex",
+        alignItems: "baseline",
+        gap: 6,
+        padding: "4px 10px",
+        borderRadius: 7,
+        background: h ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.05)",
+        border: h ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.08)",
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+        transition: "all 180ms ease",
+        transform: h ? "translateY(-1px)" : "translateY(0)",
+      }}
+    >
+      <span
+        style={{
+          fontSize: 9, fontWeight: 700, textTransform: "uppercase",
+          letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)",
+        }}
+      >
+        {chip.label}
+      </span>
+      <span style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF" }}>{chip.value}</span>
+    </button>
+  );
+}
+
 function ContextBar({ filters, onOpen, children }) {
   const chips = useMemo(() => {
     return Object.entries(filters || {})
@@ -79,55 +128,34 @@ function ContextBar({ filters, onOpen, children }) {
   return (
     <div
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "6px 8px 6px 14px",
-        borderRadius: 12,
-        background: "#141414",
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "6px 8px 6px 14px", borderRadius: 12,
+        background: "#0F0F0F",
         border: "1px solid rgba(255,255,255,0.10)",
         flexShrink: 0,
       }}
     >
       <span
         style={{
-          fontSize: 9,
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: "0.14em",
-          color: "rgba(255,255,255,0.28)",
-          flexShrink: 0,
+          fontSize: 9, fontWeight: 700, textTransform: "uppercase",
+          letterSpacing: "0.14em", color: "rgba(255,255,255,0.32)", flexShrink: 0,
         }}
       >
         Cenário
       </span>
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          flex: 1,
-          minWidth: 0,
-          flexWrap: "wrap",
-        }}
-      >
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0, flexWrap: "wrap" }}>
         {chips.length === 0 ? (
           <button
             onClick={onOpen}
             style={{
-              ...font,
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              background: "transparent",
-              border: 0,
-              padding: 0,
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 600,
-              color: "rgba(255,255,255,0.45)",
+              ...font, display: "flex", alignItems: "center", gap: 6,
+              background: "transparent", border: 0, padding: 0, cursor: "pointer",
+              fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.5)",
+              transition: "color 180ms ease",
             }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#FFFFFF")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}
           >
             Nenhum filtro aplicado — escolha uma situação para treinar
             <ChevronRight size={14} strokeWidth={2} />
@@ -135,36 +163,8 @@ function ContextBar({ filters, onOpen, children }) {
         ) : (
           chips.map((chip, i) => (
             <React.Fragment key={chip.key}>
-              {i > 0 && <span style={{ color: "rgba(255,255,255,0.18)", fontSize: 12 }}>›</span>}
-              <button
-                onClick={onOpen}
-                title={`${chip.label}: ${chip.value}`}
-                style={{
-                  ...font,
-                  display: "flex",
-                  alignItems: "baseline",
-                  gap: 6,
-                  padding: "4px 9px",
-                  borderRadius: 7,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: 9,
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.1em",
-                    color: "rgba(255,255,255,0.3)",
-                  }}
-                >
-                  {chip.label}
-                </span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF" }}>{chip.value}</span>
-              </button>
+              {i > 0 && <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 12 }}>›</span>}
+              <ContextChip chip={chip} onClick={onOpen} />
             </React.Fragment>
           ))
         )}
@@ -175,12 +175,9 @@ function ContextBar({ filters, onOpen, children }) {
   );
 }
 
-/* ------------------------------------------------------------------
-   Session inline no header — 1 linha, tipografia pequena.
--------------------------------------------------------------------*/
 function SessionInline({ handIdx, handsTotal, hits, total, sessionPct, avgFreq }) {
-  const dim = "rgba(255,255,255,0.35)";
-  const soft = "rgba(255,255,255,0.55)";
+  const dim = "rgba(255,255,255,0.4)";
+  const soft = "rgba(255,255,255,0.65)";
   return (
     <div style={{ ...font, fontSize: 12, color: dim, display: "flex", gap: 10, alignItems: "baseline" }}>
       <span>
@@ -193,12 +190,34 @@ function SessionInline({ handIdx, handsTotal, hits, total, sessionPct, avgFreq }
             <span style={{ color: hits > 0 ? C.pos : soft, fontWeight: 700 }}>{hits}/{total}</span> acertos ({sessionPct}%)
           </span>
           <span style={{ opacity: 0.4 }}>·</span>
-          <span>
-            freq <span style={{ color: soft, fontWeight: 700 }}>{avgFreq}%</span>
-          </span>
+          <span>freq <span style={{ color: soft, fontWeight: 700 }}>{avgFreq}%</span></span>
         </>
       )}
     </div>
+  );
+}
+
+/* Botão de próxima mão com hover animado */
+function NextButton({ onClick }) {
+  const [h, setH] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setH(true)}
+      onMouseLeave={() => setH(false)}
+      title="Próxima mão"
+      style={{
+        display: "flex", alignItems: "center", gap: 6,
+        background: h ? "#F5F5F5" : "#FFFFFF", color: "#111111",
+        border: 0, borderRadius: 10, padding: "8px 16px", cursor: "pointer",
+        fontWeight: 700, fontSize: 13, flexShrink: 0,
+        transform: h ? "translateY(-1px)" : "translateY(0)",
+        boxShadow: h ? "0 6px 18px rgba(255,255,255,0.15)" : "0 2px 6px rgba(0,0,0,0.3)",
+        transition: "all 180ms ease",
+      }}
+    >
+      Próxima <SkipForward size={14} />
+    </button>
   );
 }
 
@@ -214,6 +233,19 @@ export default function DrillView({ onBack }) {
   const [heroTimer, setHeroTimer] = useState(30);
 
   const hand = hands[idx] || null;
+
+  /* Trava o scroll do body enquanto o Modo Treino está montado.
+     Combinado com position:fixed no wrapper, garante que nada rola
+     atrás da tela — independente do App/Dashboard pai. */
+  useEffect(() => {
+    const prev = { overflow: document.body.style.overflow, htmlOverflow: document.documentElement.style.overflow };
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev.overflow;
+      document.documentElement.style.overflow = prev.htmlOverflow;
+    };
+  }, []);
 
   useEffect(() => {
     setIdx(0);
@@ -305,14 +337,12 @@ export default function DrillView({ onBack }) {
   const sessionPct = stats.total > 0 ? Math.round((stats.hits / stats.total) * 100) : 0;
   const avgFreq = stats.total > 0 ? Math.round((stats.freqSum / stats.total) * 100) : 0;
 
-  /* ---------------- Estados vazios (sem mão) ---------------- */
   const emptyState = () => {
     if (loading) {
       return (
         <>
           <Loader2 size={32} color="rgba(255,255,255,0.5)" style={{ animation: "spin 1s linear infinite" }} />
           <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Carregando mãos...</p>
-          <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
         </>
       );
     }
@@ -357,28 +387,44 @@ export default function DrillView({ onBack }) {
     );
   };
 
-  /* ---------------------------- Render ---------------------------- */
   return (
     <div
       style={{
         ...font,
+        position: "fixed",
+        inset: 0,
         background: "#000000",
-        height: "100vh",
-        maxHeight: "100vh",
         display: "flex",
         flexDirection: "column",
-        gap: 10,
-        padding: 12,
+        gap: 8,
+        padding: 10,
         boxSizing: "border-box",
         overflow: "hidden",
+        zIndex: 40,
+        animation: "fadeInUp 220ms ease-out",
       }}
     >
-      {/* Header — 1 linha compacta com sessão inline */}
+      <style>{GLOBAL_ANIMATIONS}</style>
+
+      {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
         <button
           onClick={onBack}
           title="Voltar"
-          style={{ display: "grid", placeItems: "center", width: 36, height: 36, borderRadius: 10, background: "#1E1E1E", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.45)", cursor: "pointer", flexShrink: 0 }}
+          style={{
+            display: "grid", placeItems: "center", width: 36, height: 36, borderRadius: 10,
+            background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.10)",
+            color: "rgba(255,255,255,0.55)", cursor: "pointer", flexShrink: 0,
+            transition: "all 180ms ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "#252525";
+            e.currentTarget.style.color = "#FFFFFF";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "#1A1A1A";
+            e.currentTarget.style.color = "rgba(255,255,255,0.55)";
+          }}
         >
           <ArrowLeft size={16} strokeWidth={1.5} />
         </button>
@@ -400,18 +446,10 @@ export default function DrillView({ onBack }) {
           )}
         </div>
 
-        {userAction && hand && (
-          <button
-            onClick={nextHand}
-            title="Próxima mão"
-            style={{ display: "flex", alignItems: "center", gap: 6, background: "#FFFFFF", color: "#111111", border: 0, borderRadius: 10, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, flexShrink: 0 }}
-          >
-            Próxima <SkipForward size={14} />
-          </button>
-        )}
+        {userAction && hand && <NextButton onClick={nextHand} />}
       </div>
 
-      {/* Barra de contexto — sem overflow-x */}
+      {/* Context bar */}
       <ContextBar filters={filters} onOpen={() => setFiltersOpen(true)}>
         <FilterDrawer
           open={filtersOpen}
@@ -425,20 +463,37 @@ export default function DrillView({ onBack }) {
         />
       </ContextBar>
 
-      {/* Mesa (flex:1) — preenche o que sobrar */}
-      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", position: "relative" }}>
+      {/* Mesa (centralizada, com limite de tamanho) */}
+      <div
+        style={{
+          flex: 1, minHeight: 0,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "0 4px",
+        }}
+      >
         {hand ? (
-          <PokerTable hand={tableHand} heroTimer={heroTimer} />
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 820,
+              height: "100%",
+              maxHeight: 460,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            <PokerTable hand={tableHand} heroTimer={heroTimer} />
+          </div>
         ) : (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
             {emptyState()}
           </div>
         )}
       </div>
 
-      {/* Rodapé — ActionBar OU GtoFeedback, altura previsível */}
+      {/* Rodapé — ActionBar OU GtoFeedback */}
       {hand && (
-        <div style={{ flexShrink: 0 }}>
+        <div style={{ flexShrink: 0, animation: "fadeInUp 240ms ease-out" }} key={userAction ? "feedback" : "action"}>
           {userAction ? (
             <GtoFeedback
               userAction={userAction}
