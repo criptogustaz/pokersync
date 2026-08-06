@@ -55,4 +55,21 @@ export const db = {
       return data ?? [];
     },
   },
+  async facets() {
+      const { data, error } = await supabaseAdmin
+        .from("drills")
+        .select("position, action, street")
+        .not("gto_nodes", "is", null);
+      if (error) throw new Error(error.message);
+
+      const map = {};
+      for (const r of data ?? []) {
+        const k = `${r.position}|${r.action}|${r.street}`;
+        map[k] = (map[k] || 0) + 1;
+      }
+      return Object.entries(map).map(([k, n]) => {
+        const [position, action, street] = k.split("|");
+        return { position, action, street, n };
+      });
+    },
 };
