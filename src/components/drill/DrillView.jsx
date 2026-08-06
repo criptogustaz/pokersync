@@ -27,15 +27,20 @@ import { parseBoard, parseHeroCombo } from "../../utils/parseBoard.js";
    O header continua SEMPRE montado (não desmonta o FilterDrawer).
 ===================================================================*/
 
-const DEFAULT_SEATS = [
-  { left: "50%", top: "90%", label: "BTN", sub: "Você", stack: "", active: true },
-  { left: "18.9%", top: "78.3%", label: "SB", sub: "Vilão", stack: "", inHand: true },
-  { left: "6%", top: "50%", label: "CO", sub: "Vilão", stack: "", inHand: true },
-  { left: "18.9%", top: "21.7%", label: "UTG", sub: "Fora da mão", stack: "", inHand: false },
-  { left: "50%", top: "10%", label: "UTG+1", sub: "Fora da mão", stack: "", inHand: false },
-  { left: "81.1%", top: "21.7%", label: "HJ", sub: "Fora da mão", stack: "", inHand: false },
-  { left: "94%", top: "50%", label: "BB", sub: "Vilão", stack: "", inHand: true },
-  { left: "81.1%", top: "78.3%", label: "MP", sub: "Vilão", stack: "", inHand: false },
+/* Participação estática por posição (não vem do backend — a API de
+   /api/drills/batch só retorna board/pot/effectiveStack/gtoNodes/
+   heroCards, sem status real de fold/ação por vilão). Mesma
+   simplificação usada antes: BB/CO/SB/MP aparecem "na mão", os demais
+   como cadeira vazia. BTN é sempre o herói. */
+const SEAT_INVOLVEMENT = [
+  { pos: "BTN", hero: true },
+  { pos: "SB", inHand: true },
+  { pos: "CO", inHand: true },
+  { pos: "UTG", inHand: false },
+  { pos: "UTG+1", inHand: false },
+  { pos: "HJ", inHand: false },
+  { pos: "BB", inHand: true },
+  { pos: "MP", inHand: true },
 ];
 
 /* Rótulos legíveis para as chaves do objeto `filters`. */
@@ -242,23 +247,47 @@ export default function DrillView({ onBack }) {
     setUserAction(null);
   }, [queryString]);
 
-  const board = useMemo(() => (hand ? parseBoard(hand.board) : []), [hand]);
+const board = useMemo(() => (hand ? parseBoard(hand.board) : []), [hand]);
 
-  const hero = useMemo(() => {
-    if (!hand?.heroCards) return [{ faceDown: true }, { faceDown: true }];
+  const heroCardsParsed = useMemo(() => {
+    if (!hand?.heroCards) return [];
     return parseHeroCombo(hand.heroCards);
-  }, [hand]);
-
-  const seats = useMemo(() => {
-    if (!hand) return DEFAULT_SEATS;
-    const stackLabel = `${hand.effectiveStack} bb`;
-    return DEFAULT_SEATS.map((s) => (s.inHand || s.active ? { ...s, stack: stackLabel } : s));
   }, [hand]);
 
   const context = useMemo(() => {
     if (!hand) return "";
     return `Pot ${hand.pot} · Stack ${hand.effectiveStack} bb`;
   }, [hand]);
+
+  /* Objeto único no formato que o PokerTable (novo) espera:
+     { pot, spr, board, history, seats }. `history` vem vazio — o
+     backend ainda não retorna ações rua a rua; quando existir, é só
+     alimentar aqui. */
+  const tableHand = useMemo(() => {
+    if (!hand) return null;
+    const spr =
+      hand.pot > 0 && hand.effectiveStack != null
+        ? Math.round((hand.effectiveStack / hand.pot) * 10) / 10
+        : null;
+
+    const seats = {};
+    SEAT_INVOLVEMENT.forEach(({ pos, hero: isHero, inHand }) => {
+      if (isHero) {
+        seats[pos] = {
+          status: userAction ? "live" : "acting",
+          stack: hand.effectiveStack,
+          cards: heroCardsParsed,
+          ...(userAction ? { action: { type: userAction.action, size: userAction.sizing } } : {}),
+        };
+      } else if (inHand) {
+        seats[pos] = { status: "live", stack: hand.effectiveStack };
+      } else {
+        seats[pos] = { status: "empty" };
+      }
+    });
+
+    return { pot: hand.pot, spr, board, history: [], seats };
+  }, [hand, board, heroCardsParsed, userAction]);
 
   const betSizings = useMemo(() => {
     if (!hand?.gtoNodes?.actions) return [];
@@ -370,14 +399,7 @@ export default function DrillView({ onBack }) {
   } else {
     content = (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <PokerTable
-          seats={seats}
-          pot={String(hand.pot)}
-          board={board}
-          hero={hero}
-          heroTimer={heroTimer}
-          betEvent={userAction}
-        >
+        <PokerTable hand={tableHand} heroTimer={heroTimer}>
           {!userAction && (
             <ActionBar
               pot={hand.pot}
