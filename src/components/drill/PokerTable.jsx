@@ -5,52 +5,25 @@ import { T, F, POS, ACT, num } from "./drillTheme";
 /* ==================================================================
    src/components/drill/PokerTable.jsx
 
+   Ajustes desta versão para caber sem scroll:
+   - Wrapper vira flex column height:100% — a mesa passa a preencher
+     a altura DADA pelo container pai (o DrillView reserva flex:1 pra
+     ela), em vez de calcular sua altura a partir da largura via
+     paddingBottom:64%. O truque antigo estourava a viewport em
+     widescreens.
+   - Timeline só renderiza quando há `history` de fato. Como a API de
+     /api/drills/batch ainda não retorna ações rua a rua, ela some da
+     tela por ora — economiza ~48px e evita o scroll horizontal que
+     aparecia quando o histórico ficava largo.
+   - Slot `children` removido: ActionBar / GtoFeedback vivem no
+     DrillView, como irmãos do PokerTable, com altura previsível.
+
    PROPS
    -----
-   hand: objeto da mão ou null (null = mesa zerada, antes do filtro)
-     {
-       pot: 18,                       // bb
-       spr: 1.4,
-       board: ["Ah","Kd","5c","2s",null],   // sempre 5 posições
-       history: [                     // ruas já jogadas (hoje sempre
-                                       // [] — a API de
-                                       // /api/drills/batch ainda não
-                                       // retorna ações rua a rua)
-         { street: "PRÉ",  actions: [{ pos:"BTN", label:"2.5" }] },
-         { street: "FLOP", current: true, actions: [{ pos:"BB", label:"check" }] },
-       ],
-       seats: {
-         BTN: { status:"acting", stack:25, cards:["7s","6h"] },
-         BB:  { status:"live",   stack:28.5, action:{ type:"check" } },
-         UTG: { status:"folded", stack:31,  action:{ type:"fold" } },
-         MP:  { status:"empty" },
-         ...
-       }
-     }
-
-   status: "empty" | "folded" | "live" | "acting"
-     empty  → cadeira vazia (28% opacidade, sem cartas)
-     folded → saiu da mão (42% opacidade + badge Fold)
-     live   → na mão, já agiu (opacidade cheia, sem glow)
-     acting → na vez (anel de timer + glow + label NA AÇÃO)
-
-   action: { type: "fold"|"check"|"call"|"bet"|"raise", size?: number }
-
-   heroTimer: segundos restantes para o herói decidir (opcional).
-     Exibido ao lado do badge "NA AÇÃO" quando o herói está "acting".
-
-   children: conteúdo extra renderizado abaixo do felt — é onde o
-   DrillView monta a ActionBar enquanto o herói ainda não agiu.
-   Restaurado nesta revisão: a versão anterior deste arquivo tinha
-   removido o slot de children junto com o CTA "Abrir filtros", o que
-   também derrubou a ActionBar sem querer.
-
-   MUDANÇA: o CTA "Abrir filtros" continua removido do estado zerado —
-   abrir filtros é ação da barra de contexto no header.
+   hand: objeto no formato { pot, spr, board, history, seats } ou null.
+   heroTimer: segundos restantes do timer do herói (opcional).
 ===================================================================*/
 
-/* 8 assentos sempre visíveis. `card` = lado onde as cartas nascem,
-   sempre voltado ao centro da mesa. */
 const SEATS = [
   { pos: "UTG",   x: 13, y: 30, card: "right" },
   { pos: "UTG+1", x: 34, y: 13, card: "below" },
@@ -156,7 +129,7 @@ function Seat({ seat, state, heroTimer }) {
 
         {facedown && <CardBackPair side={seat.card === "left" ? "left" : "right"} />}
 
-        {hero && cards && (
+        {hero && cards && cards.length > 0 && (
           <div style={{ display: "flex", gap: 6, paddingBottom: 4 }}>
             {cards.map((c, i) => (
               <div key={i} style={{ transform: `rotate(${i ? 5 : -5}deg)` }}>
@@ -170,22 +143,23 @@ function Seat({ seat, state, heroTimer }) {
   );
 }
 
-export default function PokerTable({ hand, heroTimer, children }) {
+export default function PokerTable({ hand, heroTimer }) {
   const active = !!hand;
   const history = hand?.history || [];
+  const hasHistory = history.length > 0;
   const seatData = (p) => (hand?.seats && hand.seats[p]) || { status: "empty" };
 
   return (
-    <div>
-      {/* Linha do tempo: o que já aconteceu, rua a rua */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 8, marginBottom: 12,
-        padding: "8px 12px", minHeight: 36, borderRadius: 12, overflowX: "auto",
-        border: `1px solid ${T.line}`,
-        background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015))",
-      }}>
-        {active ? (
-          history.map((h, i) => (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0 }}>
+      {/* Timeline: só quando há histórico rua a rua (hoje: nunca) */}
+      {active && hasHistory && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8, marginBottom: 10,
+          padding: "6px 12px", minHeight: 32, borderRadius: 12, overflowX: "auto",
+          border: `1px solid ${T.line}`, flexShrink: 0,
+          background: "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015))",
+        }}>
+          {history.map((h, i) => (
             <React.Fragment key={i}>
               <span style={{
                 fontFamily: F, fontSize: 9.5, fontWeight: 800, letterSpacing: 1.2,
@@ -208,98 +182,83 @@ export default function PokerTable({ hand, heroTimer, children }) {
               </div>
               {i < history.length - 1 && <span style={{ color: T.line }}>|</span>}
             </React.Fragment>
-          ))
-        ) : (
-          <span style={{ fontFamily: F, fontSize: 11.5, color: T.dim }}>Nenhuma mão carregada</span>
-        )}
-      </div>
-
-      {/* Mesa */}
-      <div style={{ position: "relative", width: "100%", paddingBottom: "64%" }}>
-        <div style={{ position: "absolute", inset: 0 }}>
-          <div style={{
-            position: "absolute", inset: "6% 3%", borderRadius: "50%",
-            background: "radial-gradient(60% 70% at 50% 38%, #1FA97B 0%, #14795A 38%, #0C5240 66%, #06301F 100%)",
-            boxShadow: [
-              "0 0 0 10px #0F1418",
-              "0 0 0 11px rgba(255,255,255,.10)",
-              "0 0 60px rgba(31,169,123,.28)",
-              "0 30px 60px rgba(0,0,0,.65)",
-              "inset 0 2px 40px rgba(255,255,255,.10)",
-              "inset 0 -20px 60px rgba(0,0,0,.45)",
-            ].join(", "),
-          }}>
-            <div style={{
-              position: "absolute", inset: 0, borderRadius: "50%", pointerEvents: "none",
-              background: "radial-gradient(50% 40% at 50% 30%, rgba(255,255,255,.14), transparent 70%)",
-            }} />
-          </div>
-
-          <div style={{
-            position: "absolute", left: "50%", top: "44%", transform: "translate(-50%,-50%)",
-            display: "flex", flexDirection: "column", alignItems: "center", gap: 11, zIndex: 3,
-          }}>
-            {active ? (
-              <>
-                <div style={{ display: "flex", gap: 7 }}>
-                  {hand.board.map((c, i) => <Card key={i} card={c} />)}
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
-                  <div style={{
-                    display: "flex", alignItems: "center", gap: 7, padding: "6px 15px",
-                    borderRadius: 999, fontFamily: F,
-                    background: "linear-gradient(180deg,rgba(10,20,16,.92),rgba(4,10,8,.92))",
-                    border: "1px solid rgba(255,255,255,.16)",
-                    boxShadow: "0 8px 22px rgba(0,0,0,.55), 0 0 18px rgba(31,169,123,.25)",
-                  }}>
-                    <span style={{
-                      width: 11, height: 11, borderRadius: "50%",
-                      background: "linear-gradient(180deg,#34D399,#0F766E)", boxShadow: "0 0 8px #34D399",
-                    }} />
-                    <span style={{ color: "#fff", fontWeight: 800, fontSize: 16, ...num }}>{hand.pot}</span>
-                    <span style={{ color: T.dim, fontSize: 11, fontWeight: 700 }}>bb</span>
-                  </div>
-                  {/* SPR sob o pote: o número que determina o sizing fica
-                      visível enquanto o olho está no board */}
-                  {hand.spr != null && (
-                    <div style={{
-                      fontFamily: F, fontSize: 10, fontWeight: 700, letterSpacing: 1,
-                      color: "rgba(233,238,245,.55)", ...num,
-                    }}>
-                      SPR {hand.spr}
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              /* Estado zerado: mesa vazia até o filtro ser aplicado.
-                 Sem CTA aqui — abrir filtros é ação da barra de
-                 contexto no header. */
-              <div style={{ textAlign: "center", maxWidth: 290, fontFamily: F }}>
-                <div style={{ display: "flex", gap: 7, justifyContent: "center", marginBottom: 16 }}>
-                  {[0, 1, 2, 3, 4].map((i) => <Card key={i} card={null} />)}
-                </div>
-                <div style={{ color: T.text, fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
-                  Escolha os filtros para começar
-                </div>
-                <div style={{ color: T.dim, fontSize: 12, lineHeight: 1.5 }}>
-                  Defina posição, ação e rua no filtro acima. Só mãos que existem na base aparecem aqui.
-                </div>
-              </div>
-            )}
-          </div>
-
-          {SEATS.map((s) => (
-            <Seat key={s.pos} seat={s} state={seatData(s.pos)} heroTimer={heroTimer} />
           ))}
         </div>
-      </div>
-
-      {active && children && (
-        <div style={{ marginTop: 14 }}>
-          {children}
-        </div>
       )}
+
+      {/* Mesa — ocupa o espaço vertical dado pelo pai (flex:1) */}
+      <div style={{ position: "relative", flex: 1, minHeight: 0, width: "100%" }}>
+        <div style={{
+          position: "absolute", inset: "3% 3%", borderRadius: "50%",
+          background: "radial-gradient(60% 70% at 50% 38%, #1FA97B 0%, #14795A 38%, #0C5240 66%, #06301F 100%)",
+          boxShadow: [
+            "0 0 0 10px #0F1418",
+            "0 0 0 11px rgba(255,255,255,.10)",
+            "0 0 60px rgba(31,169,123,.28)",
+            "0 30px 60px rgba(0,0,0,.65)",
+            "inset 0 2px 40px rgba(255,255,255,.10)",
+            "inset 0 -20px 60px rgba(0,0,0,.45)",
+          ].join(", "),
+        }}>
+          <div style={{
+            position: "absolute", inset: 0, borderRadius: "50%", pointerEvents: "none",
+            background: "radial-gradient(50% 40% at 50% 30%, rgba(255,255,255,.14), transparent 70%)",
+          }} />
+        </div>
+
+        <div style={{
+          position: "absolute", left: "50%", top: "44%", transform: "translate(-50%,-50%)",
+          display: "flex", flexDirection: "column", alignItems: "center", gap: 10, zIndex: 3,
+        }}>
+          {active ? (
+            <>
+              <div style={{ display: "flex", gap: 7 }}>
+                {hand.board.map((c, i) => <Card key={i} card={c} />)}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 7, padding: "5px 14px",
+                  borderRadius: 999, fontFamily: F,
+                  background: "linear-gradient(180deg,rgba(10,20,16,.92),rgba(4,10,8,.92))",
+                  border: "1px solid rgba(255,255,255,.16)",
+                  boxShadow: "0 8px 22px rgba(0,0,0,.55), 0 0 18px rgba(31,169,123,.25)",
+                }}>
+                  <span style={{
+                    width: 10, height: 10, borderRadius: "50%",
+                    background: "linear-gradient(180deg,#34D399,#0F766E)", boxShadow: "0 0 8px #34D399",
+                  }} />
+                  <span style={{ color: "#fff", fontWeight: 800, fontSize: 15, ...num }}>{hand.pot}</span>
+                  <span style={{ color: T.dim, fontSize: 11, fontWeight: 700 }}>bb</span>
+                </div>
+                {hand.spr != null && (
+                  <div style={{
+                    fontFamily: F, fontSize: 10, fontWeight: 700, letterSpacing: 1,
+                    color: "rgba(233,238,245,.55)", ...num,
+                  }}>
+                    SPR {hand.spr}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div style={{ textAlign: "center", maxWidth: 290, fontFamily: F }}>
+              <div style={{ display: "flex", gap: 7, justifyContent: "center", marginBottom: 14 }}>
+                {[0, 1, 2, 3, 4].map((i) => <Card key={i} card={null} />)}
+              </div>
+              <div style={{ color: T.text, fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
+                Escolha os filtros para começar
+              </div>
+              <div style={{ color: T.dim, fontSize: 12, lineHeight: 1.5 }}>
+                Defina posição, ação e rua no filtro acima. Só mãos que existem na base aparecem aqui.
+              </div>
+            </div>
+          )}
+        </div>
+
+        {SEATS.map((s) => (
+          <Seat key={s.pos} seat={s} state={seatData(s.pos)} heroTimer={heroTimer} />
+        ))}
+      </div>
     </div>
   );
 }
