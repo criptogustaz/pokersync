@@ -57,14 +57,14 @@ function LoginField({ icon: Icon, label, type = "text", value, onChange, placeho
   );
 }
 
-export default function Login({ onEnter, onSignUpSuccess, initialMode = "signin" }) {
+export default function Login({ onEnter, onSignUpSuccess, initialMode = "signin", initialNotice = "" }) {
   const [mode, setMode] = useState(initialMode);
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
   const [email, setEmail] = useState("");
   const [pass, setPass] = useState("");
   const [show, setShow] = useState(false);
-  const [err, setErr] = useState("");
+  const [err, setErr] = useState(initialNotice);
   const [ok, setOk] = useState("");
   const [loading, setLoading] = useState(false);
   const [btnHover, setBtnHover] = useState(false);
@@ -98,11 +98,13 @@ export default function Login({ onEnter, onSignUpSuccess, initialMode = "signin"
     if (pass.length < 6) return setErr("A senha precisa ter ao menos 6 caracteres.");
     setLoading(true);
     try {
-      const { needsConfirmation } = await signUp({ name, nickname, email, password: pass });
-      if (needsConfirmation) {
+      const { needsEmailConfirmation } = await signUp({ name, nickname, email, password: pass });
+      if (needsEmailConfirmation) {
         onSignUpSuccess?.(email);
       } else {
-        onEnter();
+        setPass("");
+        setMode("signin");
+        setOk("Conta criada com sucesso! Faça login para continuar.");
       }
     } catch (e) {
       console.error("Falha no cadastro:", e);
