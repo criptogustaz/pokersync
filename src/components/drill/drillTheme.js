@@ -25,7 +25,8 @@ export const T = {
   bad:      fb(BASE.bad ?? BASE.danger ?? BASE.error, "#EF4444"),
 };
 
-export const F = fb(BASE_FONT, "'Inter', system-ui, sans-serif");
+export const FONT = typeof BASE_FONT === "object" ? BASE_FONT : { fontFamily: BASE_FONT };
+export const F = FONT.fontFamily || "'Inter', system-ui, sans-serif";
 
 /* Cor por posição — gradiente de temperatura seguindo a ordem de ação:
    early frio, late quente. Vira código visual reconhecível sem leitura. */
