@@ -32,7 +32,13 @@ import { T, F, POS, ACT, num } from "./drillTheme";
      acting → na vez (anel de timer + glow + label NA AÇÃO)
 
    action: { type: "fold"|"check"|"call"|"bet"|"raise", size?: number }
-   onOpenFilters: () => void   — CTA do estado zerado
+
+   MUDANÇA: o CTA "Abrir filtros" foi removido do estado zerado — a
+   ação de abrir filtros já vive no ícone do FilterDrawer no header,
+   e o botão duplicado aqui não estava levando a lugar nenhum. A prop
+   onOpenFilters foi removida junto (não é mais usada por este
+   componente); se o DrillView ainda passar essa prop, ela é
+   simplesmente ignorada.
 ===================================================================*/
 
 /* 8 assentos sempre visíveis. `card` = lado onde as cartas nascem,
@@ -149,7 +155,7 @@ function Seat({ seat, state }) {
   );
 }
 
-export default function PokerTable({ hand, onOpenFilters = () => {} }) {
+export default function PokerTable({ hand }) {
   const active = !!hand;
   const seatData = (p) => (hand?.seats && hand.seats[p]) || { status: "empty" };
 
@@ -250,7 +256,8 @@ export default function PokerTable({ hand, onOpenFilters = () => {} }) {
                 </div>
               </>
             ) : (
-              /* Estado zerado: mesa vazia até o filtro ser aplicado */
+              /* Estado zerado: mesa vazia até o filtro ser aplicado.
+                 Sem CTA aqui — abrir filtros é ação do ícone no header. */
               <div style={{ textAlign: "center", maxWidth: 290, fontFamily: F }}>
                 <div style={{ display: "flex", gap: 7, justifyContent: "center", marginBottom: 16 }}>
                   {[0, 1, 2, 3, 4].map((i) => <Card key={i} card={null} />)}
@@ -258,18 +265,9 @@ export default function PokerTable({ hand, onOpenFilters = () => {} }) {
                 <div style={{ color: T.text, fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
                   Escolha os filtros para começar
                 </div>
-                <div style={{ color: T.dim, fontSize: 12, lineHeight: 1.5, marginBottom: 14 }}>
-                  Defina stack, posição e rua. Só mãos que existem na base aparecem aqui.
+                <div style={{ color: T.dim, fontSize: 12, lineHeight: 1.5 }}>
+                  Defina stack, posição e rua no ícone de filtro acima. Só mãos que existem na base aparecem aqui.
                 </div>
-                <button onClick={onOpenFilters} style={{
-                  padding: "9px 20px", borderRadius: 10, cursor: "pointer", fontFamily: F,
-                  background: `linear-gradient(180deg,${T.accent},#7E22CE)`,
-                  color: "#fff", fontWeight: 800, fontSize: 13,
-                  border: "1px solid rgba(255,255,255,.25)",
-                  boxShadow: `0 8px 20px ${T.accent}59`,
-                }}>
-                  Abrir filtros
-                </button>
               </div>
             )}
           </div>
