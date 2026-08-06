@@ -11,27 +11,22 @@ import { useFacets } from "../../services/useFacets.js";
 import { parseBoard, parseHeroCombo } from "../../utils/parseBoard.js";
 
 /* ==================================================================
-   HIERARQUIA (revisão de UX)
+   LAYOUT SEM SCROLL
 
-   1. Mesa é o único protagonista — coluna única, largura total.
-   2. Filtro virou barra de contexto no topo: mostra o cenário ativo
-      como chips clicáveis (é onde o jogador LÊ em que spot está) e
-      abre o drawer. ScenarioBar (abaixo da mesa) foi removida —
-      duplicava o drawer e ficava fora do fluxo de leitura.
-   3. Análise GTO não é indicador permanente: só existe DEPOIS da ação,
-      ancorada logo abaixo da mesa (onde a ActionBar estava). Sem card
-      vazio "escolha sua ação".
-   4. Sessão virou strip de rodapé, tipografia pequena, cor neutra.
-      Teal (C.pos) fica reservado para acerto.
+   Container = 100vh, flex column, overflow hidden. Cada bloco ocupa
+   sua faixa fixa; a mesa é a única que se expande (flex: 1) para
+   preencher o que sobrar.
 
-   O header continua SEMPRE montado (não desmonta o FilterDrawer).
+     header       ~48px fixo — inclui a strip de sessão inline
+     context bar  ~48px fixo — cenário + gatilho do FilterDrawer
+     mesa          flex:1  — cresce/encolhe conforme a viewport
+     rodapé       ~80px fixo — ActionBar OU GtoFeedback
+
+   O PokerTable perdeu o slot `children` de novo: a barra de ação vive
+   fora dele, como irmã. Isso deixa o rodapé com altura previsível
+   independentemente do que o PokerTable renderiza por dentro.
 ===================================================================*/
 
-/* Participação estática por posição (não vem do backend — a API de
-   /api/drills/batch só retorna board/pot/effectiveStack/gtoNodes/
-   heroCards, sem status real de fold/ação por vilão). Mesma
-   simplificação usada antes: BB/CO/SB/MP aparecem "na mão", os demais
-   como cadeira vazia. BTN é sempre o herói. */
 const SEAT_INVOLVEMENT = [
   { pos: "BTN", hero: true },
   { pos: "SB", inHand: true },
@@ -43,7 +38,6 @@ const SEAT_INVOLVEMENT = [
   { pos: "MP", inHand: true },
 ];
 
-/* Rótulos legíveis para as chaves do objeto `filters`. */
 const FILTER_LABELS = {
   street: "Street",
   action: "Ação",
@@ -55,7 +49,6 @@ const FILTER_LABELS = {
   format: "Formato",
 };
 
-/* Valores que significam "sem restrição" e não viram chip. */
 const NEUTRAL_VALUES = new Set(["", "Qualquer", "Todos", "Todas", "Ambos", "Any", "all"]);
 
 function parseActionString(raw) {
@@ -66,8 +59,8 @@ function parseActionString(raw) {
 }
 
 /* ------------------------------------------------------------------
-   Barra de contexto — controle primário do cenário.
-   Estado ativo: chips com o filtro corrente. Estado zerado: convite.
+   Barra de contexto — controle primário do cenário. Sem overflow-x:
+   com no máximo 3 chips (posição/ação/rua) cabe em qualquer viewport.
 -------------------------------------------------------------------*/
 function ContextBar({ filters, onOpen, children }) {
   const chips = useMemo(() => {
@@ -88,11 +81,12 @@ function ContextBar({ filters, onOpen, children }) {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 12,
-        padding: "10px 12px 10px 16px",
-        borderRadius: 14,
+        gap: 10,
+        padding: "6px 8px 6px 14px",
+        borderRadius: 12,
         background: "#141414",
         border: "1px solid rgba(255,255,255,0.10)",
+        flexShrink: 0,
       }}
     >
       <span
@@ -115,8 +109,7 @@ function ContextBar({ filters, onOpen, children }) {
           gap: 6,
           flex: 1,
           minWidth: 0,
-          overflowX: "auto",
-          scrollbarWidth: "none",
+          flexWrap: "wrap",
         }}
       >
         {chips.length === 0 ? (
@@ -142,9 +135,7 @@ function ContextBar({ filters, onOpen, children }) {
         ) : (
           chips.map((chip, i) => (
             <React.Fragment key={chip.key}>
-              {i > 0 && (
-                <span style={{ color: "rgba(255,255,255,0.18)", fontSize: 12, flexShrink: 0 }}>›</span>
-              )}
+              {i > 0 && <span style={{ color: "rgba(255,255,255,0.18)", fontSize: 12 }}>›</span>}
               <button
                 onClick={onOpen}
                 title={`${chip.label}: ${chip.value}`}
@@ -153,13 +144,12 @@ function ContextBar({ filters, onOpen, children }) {
                   display: "flex",
                   alignItems: "baseline",
                   gap: 6,
-                  padding: "5px 10px",
-                  borderRadius: 8,
+                  padding: "4px 9px",
+                  borderRadius: 7,
                   background: "rgba(255,255,255,0.05)",
                   border: "1px solid rgba(255,255,255,0.08)",
                   cursor: "pointer",
                   whiteSpace: "nowrap",
-                  flexShrink: 0,
                 }}
               >
                 <span
@@ -180,50 +170,34 @@ function ContextBar({ filters, onOpen, children }) {
         )}
       </div>
 
-      {/* Gatilho do drawer (FilterDrawer) */}
       <div style={{ flexShrink: 0 }}>{children}</div>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------
-   Strip de sessão — indicador, não painel.
+   Session inline no header — 1 linha, tipografia pequena.
 -------------------------------------------------------------------*/
-function SessionStrip({ hits, total, avgFreq, sessionPct }) {
-  const item = (value, label, color) => (
-    <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-      <span style={{ fontSize: 13, fontWeight: 700, color }}>{value}</span>
-      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.28)" }}>{label}</span>
-    </div>
-  );
-
+function SessionInline({ handIdx, handsTotal, hits, total, sessionPct, avgFreq }) {
+  const dim = "rgba(255,255,255,0.35)";
+  const soft = "rgba(255,255,255,0.55)";
   return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 18,
-        flexWrap: "wrap",
-        padding: "8px 14px",
-        borderRadius: 10,
-        background: "rgba(255,255,255,0.02)",
-        border: "1px solid rgba(255,255,255,0.05)",
-      }}
-    >
-      <span
-        style={{
-          fontSize: 9,
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: "0.14em",
-          color: "rgba(255,255,255,0.22)",
-        }}
-      >
-        Sessão
+    <div style={{ ...font, fontSize: 12, color: dim, display: "flex", gap: 10, alignItems: "baseline" }}>
+      <span>
+        Mão <span style={{ color: soft, fontWeight: 700 }}>{handIdx}/{handsTotal}</span>
       </span>
-      {item(`${hits}/${total}`, "acertos GTO", total > 0 && hits > 0 ? C.pos : "rgba(255,255,255,0.6)")}
-      {item(`${sessionPct}%`, "aproveitamento", "rgba(255,255,255,0.6)")}
-      {item(`${avgFreq}%`, "freq. média jogada", "rgba(255,255,255,0.6)")}
+      {total > 0 && (
+        <>
+          <span style={{ opacity: 0.4 }}>·</span>
+          <span>
+            <span style={{ color: hits > 0 ? C.pos : soft, fontWeight: 700 }}>{hits}/{total}</span> acertos ({sessionPct}%)
+          </span>
+          <span style={{ opacity: 0.4 }}>·</span>
+          <span>
+            freq <span style={{ color: soft, fontWeight: 700 }}>{avgFreq}%</span>
+          </span>
+        </>
+      )}
     </div>
   );
 }
@@ -234,7 +208,6 @@ export default function DrillView({ onBack }) {
   const facets = useFacets();
 
   const [filtersOpen, setFiltersOpen] = useState(false);
-
   const [idx, setIdx] = useState(0);
   const [userAction, setUserAction] = useState(null);
   const [stats, setStats] = useState({ hits: 0, total: 0, freqSum: 0 });
@@ -247,7 +220,7 @@ export default function DrillView({ onBack }) {
     setUserAction(null);
   }, [queryString]);
 
-const board = useMemo(() => (hand ? parseBoard(hand.board) : []), [hand]);
+  const board = useMemo(() => (hand ? parseBoard(hand.board) : []), [hand]);
 
   const heroCardsParsed = useMemo(() => {
     if (!hand?.heroCards) return [];
@@ -259,10 +232,6 @@ const board = useMemo(() => (hand ? parseBoard(hand.board) : []), [hand]);
     return `Pot ${hand.pot} · Stack ${hand.effectiveStack} bb`;
   }, [hand]);
 
-  /* Objeto único no formato que o PokerTable (novo) espera:
-     { pot, spr, board, history, seats }. `history` vem vazio — o
-     backend ainda não retorna ações rua a rua; quando existir, é só
-     alimentar aqui. */
   const tableHand = useMemo(() => {
     if (!hand) return null;
     const spr =
@@ -336,43 +305,33 @@ const board = useMemo(() => (hand ? parseBoard(hand.board) : []), [hand]);
   const sessionPct = stats.total > 0 ? Math.round((stats.hits / stats.total) * 100) : 0;
   const avgFreq = stats.total > 0 ? Math.round((stats.freqSum / stats.total) * 100) : 0;
 
-  const panelBox = {
-    ...font,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 16,
-    minHeight: 300,
-  };
-
-  /* ---------------- Conteúdo (nunca desmonta o header) --------------- */
-  let content;
-
-  if (loading) {
-    content = (
-      <div style={panelBox}>
-        <Loader2 size={32} color="rgba(255,255,255,0.5)" style={{ animation: "spin 1s linear infinite" }} />
-        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Carregando mãos...</p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-      </div>
-    );
-  } else if (error) {
-    content = (
-      <div style={panelBox}>
-        <AlertTriangle size={32} color={C.neg} />
-        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Erro ao carregar mãos.</p>
-        <button
-          onClick={reload}
-          style={{ background: "#FFFFFF", color: "#111111", border: 0, borderRadius: 10, padding: "10px 24px", cursor: "pointer", fontWeight: 700, fontSize: 13 }}
-        >
-          Tentar novamente
-        </button>
-      </div>
-    );
-  } else if (!hand) {
-    content = (
-      <div style={panelBox}>
+  /* ---------------- Estados vazios (sem mão) ---------------- */
+  const emptyState = () => {
+    if (loading) {
+      return (
+        <>
+          <Loader2 size={32} color="rgba(255,255,255,0.5)" style={{ animation: "spin 1s linear infinite" }} />
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Carregando mãos...</p>
+          <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+        </>
+      );
+    }
+    if (error) {
+      return (
+        <>
+          <AlertTriangle size={32} color={C.neg} />
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Erro ao carregar mãos.</p>
+          <button
+            onClick={reload}
+            style={{ background: "#FFFFFF", color: "#111111", border: 0, borderRadius: 10, padding: "10px 24px", cursor: "pointer", fontWeight: 700, fontSize: 13 }}
+          >
+            Tentar novamente
+          </button>
+        </>
+      );
+    }
+    return (
+      <>
         <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14, textAlign: "center" }}>
           {activeCount > 0
             ? "Nenhuma mão encontrada para esses filtros."
@@ -394,13 +353,101 @@ const board = useMemo(() => (hand ? parseBoard(hand.board) : []), [hand]);
             {activeCount > 0 ? "Ajustar filtros" : "Definir cenário"}
           </button>
         </div>
-      </div>
+      </>
     );
-  } else {
-    content = (
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <PokerTable hand={tableHand} heroTimer={heroTimer}>
-          {!userAction && (
+  };
+
+  /* ---------------------------- Render ---------------------------- */
+  return (
+    <div
+      style={{
+        ...font,
+        background: "#000000",
+        height: "100vh",
+        maxHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        padding: 12,
+        boxSizing: "border-box",
+        overflow: "hidden",
+      }}
+    >
+      {/* Header — 1 linha compacta com sessão inline */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+        <button
+          onClick={onBack}
+          title="Voltar"
+          style={{ display: "grid", placeItems: "center", width: 36, height: 36, borderRadius: 10, background: "#1E1E1E", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.45)", cursor: "pointer", flexShrink: 0 }}
+        >
+          <ArrowLeft size={16} strokeWidth={1.5} />
+        </button>
+
+        <h1 style={{ fontSize: 18, fontWeight: 700, color: "#FFFFFF", margin: 0, flexShrink: 0 }}>
+          Modo Treino
+        </h1>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {hand && (
+            <SessionInline
+              handIdx={idx + 1}
+              handsTotal={hands.length}
+              hits={stats.hits}
+              total={stats.total}
+              sessionPct={sessionPct}
+              avgFreq={avgFreq}
+            />
+          )}
+        </div>
+
+        {userAction && hand && (
+          <button
+            onClick={nextHand}
+            title="Próxima mão"
+            style={{ display: "flex", alignItems: "center", gap: 6, background: "#FFFFFF", color: "#111111", border: 0, borderRadius: 10, padding: "8px 16px", cursor: "pointer", fontWeight: 700, fontSize: 13, flexShrink: 0 }}
+          >
+            Próxima <SkipForward size={14} />
+          </button>
+        )}
+      </div>
+
+      {/* Barra de contexto — sem overflow-x */}
+      <ContextBar filters={filters} onOpen={() => setFiltersOpen(true)}>
+        <FilterDrawer
+          open={filtersOpen}
+          onOpen={() => setFiltersOpen(true)}
+          onClose={() => setFiltersOpen(false)}
+          filters={filters}
+          onSet={setFilter}
+          onReset={resetFilters}
+          activeCount={activeCount}
+          facets={facets}
+        />
+      </ContextBar>
+
+      {/* Mesa (flex:1) — preenche o que sobrar */}
+      <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", position: "relative" }}>
+        {hand ? (
+          <PokerTable hand={tableHand} heroTimer={heroTimer} />
+        ) : (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+            {emptyState()}
+          </div>
+        )}
+      </div>
+
+      {/* Rodapé — ActionBar OU GtoFeedback, altura previsível */}
+      {hand && (
+        <div style={{ flexShrink: 0 }}>
+          {userAction ? (
+            <GtoFeedback
+              userAction={userAction}
+              gtoNodes={hand.gtoNodes}
+              heroCards={hand.heroCards}
+              context={context}
+              onResult={onFeedbackResult}
+            />
+          ) : (
             <ActionBar
               pot={hand.pot}
               betSizings={betSizings}
@@ -408,77 +455,8 @@ const board = useMemo(() => (hand ? parseBoard(hand.board) : []), [hand]);
               callAmount={Math.round(hand.pot * 0.5 * 10) / 10}
             />
           )}
-        </PokerTable>
-
-        {/* Feedback ancorado onde a ação aconteceu — só existe após a ação */}
-        {userAction && (
-          <GtoFeedback
-            userAction={userAction}
-            gtoNodes={hand.gtoNodes}
-            heroCards={hand.heroCards}
-            context={context}
-            onResult={onFeedbackResult}
-          />
-        )}
-
-        <SessionStrip
-          hits={stats.hits}
-          total={stats.total}
-          avgFreq={avgFreq}
-          sessionPct={sessionPct}
-        />
-      </div>
-    );
-  }
-
-  /* ----------------------------- Render ----------------------------- */
-  return (
-    <div style={{ background: "#000000", borderRadius: 20, padding: 20 }}>
-      <div style={{ ...font, display: "flex", flexDirection: "column", gap: 14, paddingBottom: 40 }}>
-        {/* Header — SEMPRE montado, em todos os estados */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button
-            onClick={onBack}
-            title="Voltar"
-            style={{ display: "grid", placeItems: "center", width: 38, height: 38, borderRadius: 10, background: "#1E1E1E", border: "1px solid rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.45)", cursor: "pointer" }}
-          >
-            <ArrowLeft size={18} strokeWidth={1.5} />
-          </button>
-
-          <div style={{ flex: 1 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: "#FFFFFF" }}>Modo Treino</h1>
-            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>
-              {hand ? `Mão ${idx + 1} de ${hands.length}` : loading ? "Carregando..." : "Sem mãos"}
-            </p>
-          </div>
-
-          {userAction && hand && (
-            <button
-              onClick={nextHand}
-              title="Próxima mão"
-              style={{ display: "flex", alignItems: "center", gap: 6, background: "#FFFFFF", color: "#111111", border: 0, borderRadius: 10, padding: "10px 18px", cursor: "pointer", fontWeight: 700, fontSize: 13 }}
-            >
-              Próxima <SkipForward size={14} />
-            </button>
-          )}
         </div>
-
-        {/* Barra de contexto — controle primário do cenário */}
-        <ContextBar filters={filters} onOpen={() => setFiltersOpen(true)}>
-          <FilterDrawer
-            open={filtersOpen}
-            onOpen={() => setFiltersOpen(true)}
-            onClose={() => setFiltersOpen(false)}
-            filters={filters}
-            onSet={setFilter}
-            onReset={resetFilters}
-            activeCount={activeCount}
-            facets={facets}
-          />
-        </ContextBar>
-
-        {content}
-      </div>
+      )}
     </div>
   );
 }
