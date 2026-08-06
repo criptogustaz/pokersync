@@ -3,27 +3,16 @@ import Card, { CardBackPair } from "./Card";
 import { T, F, POS, ACT, num } from "./drillTheme";
 
 /* ==================================================================
-   src/components/drill/PokerTable.jsx  (v4)
+   src/components/drill/PokerTable.jsx  (v5)
 
-   Correções desta versão:
-   - Fundo do felt em verde bem mais escuro (~ #052A1F no centro),
-     dando ao branco/verde do pote e das cartas contraste real.
-   - Contorno preto grosso em volta da mesa (4px sólido + halo sutil),
-     separando o felt do fundo preto da tela.
-   - Seats: só quem está `acting` recebe cor viva + glow + pulse. Os
-     demais viram cinza neutro em ~24% de opacidade — ficam ali como
-     presença, sem competir com o foco. Vazios em 12%.
-   - Herói (BTN) passou a usar layout lateral: cartas à esquerda, info
-     à direita. Antes as cartas subiam pra dentro da mesa e brigavam
-     com o pote. Agora ficam fora do felt.
-   - Cartas do herói em tamanho `board` (não `hero`) — menores e mais
-     coerentes com o resto.
-   - Transições suaves em opacidade/transform (180ms).
-
-   PROPS
-   -----
-   hand: objeto no formato { pot, spr, board, history, seats } ou null.
-   heroTimer: segundos restantes do timer do herói (opcional).
+   Ajustes desta versão:
+   - Opacidade dos seats não-ativos ainda mais baixa: live 0.15,
+     folded 0.10, empty 0.08. As cartas viradas dos vilões (que
+     herdam a opacidade do seat) ficam bem tímidas, dando o efeito
+     de "presentes mas fora de foco".
+   - Verde do felt e contorno preto mantidos da v4.
+   - Layout lateral do herói mantido (cartas à esquerda, info à
+     direita) — pra não invadir a área do pote.
 ===================================================================*/
 
 const SEATS = [
@@ -37,7 +26,7 @@ const SEATS = [
   { pos: "SB",    x: 26, y: 84, card: "above" },
 ];
 
-const NEUTRAL = "#3A4048";   // cinza que representa "presente mas não ativo"
+const NEUTRAL = "#3A4048";
 const NEUTRAL_GLOW = "#5A6270";
 
 function ActionBadge({ action }) {
@@ -63,11 +52,11 @@ function Seat({ seat, state, heroTimer }) {
   const empty = status === "empty";
   const facedown = !hero && (status === "live" || acting);
 
-  /* Cores: só o `acting` usa a paleta viva da posição. Todo o resto
-     usa cinza neutro em opacidade baixa. */
   const col = acting ? posCol : { base: NEUTRAL, glow: NEUTRAL_GLOW };
 
-  const opacity = acting ? 1 : status === "live" ? 0.24 : status === "folded" ? 0.18 : 0.12;
+  /* Opacidades reduzidas: só o acting mantém 1. Todo o resto some
+     bastante — presença de fundo, sem competir pela atenção. */
+  const opacity = acting ? 1 : status === "live" ? 0.15 : status === "folded" ? 0.10 : 0.08;
 
   const layout = {
     below: { flexDirection: "column" },
@@ -168,7 +157,6 @@ function Seat({ seat, state, heroTimer }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 2, ...layout }}>
         {hero ? (
           <>
-            {/* Herói: cartas à esquerda, info à direita — fica fora do felt */}
             {cards && cards.length > 0 && (
               <div style={{ display: "flex", gap: 5 }}>
                 {cards.map((c, i) => (
@@ -248,12 +236,10 @@ export default function PokerTable({ hand, heroTimer }) {
         </div>
       )}
 
-      {/* MESA — altura preenche o container pai */}
+      {/* MESA */}
       <div style={{ position: "relative", flex: 1, minHeight: 0, width: "100%" }}>
-        {/* Contorno preto forte + halo sutil separam a mesa do fundo */}
         <div style={{
           position: "absolute", inset: "2% 2%", borderRadius: "50%",
-          /* Verde bem mais escuro: quase preto na borda, verde-musgo no centro */
           background: "radial-gradient(65% 75% at 50% 40%, #0F5A42 0%, #0A4231 30%, #062E22 60%, #031810 100%)",
           border: "2px solid #000000",
           boxShadow: [
@@ -265,19 +251,16 @@ export default function PokerTable({ hand, heroTimer }) {
             "inset 0 -30px 80px rgba(0,0,0,.65)",
           ].join(", "),
         }}>
-          {/* Brilho sutil no topo do felt */}
           <div style={{
             position: "absolute", inset: 0, borderRadius: "50%", pointerEvents: "none",
             background: "radial-gradient(55% 35% at 50% 25%, rgba(255,255,255,.09), transparent 70%)",
           }} />
-          {/* Anel interno claro (definição da borda do felt) */}
           <div style={{
             position: "absolute", inset: "3%", borderRadius: "50%", pointerEvents: "none",
             border: "1px solid rgba(255,255,255,.06)",
           }} />
         </div>
 
-        {/* Board + pote centrais */}
         <div style={{
           position: "absolute", left: "50%", top: "44%", transform: "translate(-50%,-50%)",
           display: "flex", flexDirection: "column", alignItems: "center", gap: 10, zIndex: 3,
@@ -327,10 +310,10 @@ export default function PokerTable({ hand, heroTimer }) {
                 {[0, 1, 2, 3, 4].map((i) => <Card key={i} card={null} />)}
               </div>
               <div style={{ color: "#fff", fontSize: 15, fontWeight: 700, marginBottom: 4 }}>
-                Escolha os filtros para começar
+                Escolha os filtros pra começar
               </div>
               <div style={{ color: "rgba(255,255,255,.5)", fontSize: 12, lineHeight: 1.5 }}>
-                Defina posição, ação e rua no filtro acima. Só mãos que existem na base aparecem aqui.
+                Posição, situação e rua ficam no painel à esquerda. Só mãos que existem na base aparecem aqui.
               </div>
             </div>
           )}
