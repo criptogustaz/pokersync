@@ -54,8 +54,18 @@ export const db = {
       if (error) throw new Error(error.message);
       return data ?? [];
     },
-  },
-  async facets() {
+
+    /**
+     * Combinações position × action × street que existem de fato na
+     * base, com a contagem de cada uma. Usado pelo FilterDrawer para
+     * desabilitar opções sem spot (ex: SB nunca tem 'vs Open').
+     *
+     * CORREÇÃO: este método estava colado FORA do objeto `drills`
+     * (como db.facets em vez de db.drills.facets), causando erro
+     * "not a function" toda vez que a rota era chamada — por isso o
+     * 500 se repetia de forma idêntica em todas as tentativas.
+     */
+    async facets() {
       const { data, error } = await supabaseAdmin
         .from("drills")
         .select("position, action, street")
@@ -72,4 +82,5 @@ export const db = {
         return { position, action, street, n };
       });
     },
+  },
 };
