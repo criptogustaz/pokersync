@@ -1,65 +1,77 @@
 import React from "react";
-import { C } from "../theme.js";
+import { T, F, num, fmtEv } from "./drillTheme";
 
-// Converte o tamanho real da aposta (vindo do solver) numa etiqueta de fração
-// de pote legível — só para exibição; o valor usado na ação é sempre o
-// número exato que veio do banco de dados.
-function fractionLabel(ratio) {
-  const table = [
-    [0.30, 0.36, "1/3 Pot"],
-    [0.45, 0.55, "1/2 Pot"],
-    [0.60, 0.70, "2/3 Pot"],
-    [0.70, 0.80, "3/4 Pot"],
-    [0.95, 1.05, "Pot"],
-  ];
-  for (const [lo, hi, label] of table) {
-    if (ratio >= lo && ratio <= hi) return label;
-  }
-  return `${Math.round(ratio * 100)}% Pot`;
+/* ==================================================================
+   src/components/drill/ActionBar.jsx
+
+   PROPS
+   -----
+   actions: [
+     { id:"check", label:"Check",    key:"Q", ev: 0,     primary:true },
+     { id:"b25",   label:"Bet 4.5",  key:"W", ev: -0.08 },
+     { id:"b75",   label:"Bet 13.5", key:"E", ev: -0.62 },
+   ]
+   Máximo de 3 itens — reflete o dado real (gto_nodes.actions nunca
+   passa de Check + 2 BET).
+
+   onAct: (action) => void
+   disabled: bool  — trava depois que o jogador escolheu
+   showEv: bool    — default true. Passe false se quiser esconder o EV
+                     antes da resposta em modo "prova".
+===================================================================*/
+
+export function Key({ children }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      minWidth: 16, height: 16, padding: "0 4px", borderRadius: 4,
+      background: "rgba(255,255,255,.07)", border: `1px solid ${T.line}`,
+      color: T.dim, fontFamily: F, fontSize: 9.5, fontWeight: 700, ...num,
+    }}>
+      {children}
+    </span>
+  );
 }
 
-export default function ActionBar({ pot = 0, betSizings = [], onAction, callAmount = 2.0 }) {
-  const base = {
-    border: 0,
-    borderRadius: 11,
-    padding: "13px 0",
-    fontSize: 15,
-    fontWeight: 800,
-    fontFamily: "'Rajdhani', sans-serif",
-    letterSpacing: "0.06em",
-    cursor: "pointer",
-  };
+export default function ActionBar({ actions = [], onAct = () => {}, disabled = false, showEv = true }) {
+  if (!actions.length) return null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", maxWidth: 460 }}>
-      {/* Até 3 tamanhos de aposta — exatamente os que o solver trouxe para essa mão */}
-      {betSizings.length > 0 && (
-        <div style={{ display: "flex", gap: 8 }}>
-          {betSizings.map((sz) => (
-            <button
-              key={sz}
-              style={{ ...base, flex: 1, background: `${C.gold}18`, color: C.goldSoft, border: `1px solid ${C.gold}44` }}
-              onClick={() => onAction("BET", sz)}
-            >
-              {fractionLabel(pot > 0 ? sz / pot : 0)}
-              <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2, fontWeight: 700 }}>{sz.toFixed(1)} bb</div>
-            </button>
-          ))}
-        </div>
-      )}
+    <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+      {actions.map((a) => (
+        <button
+          key={a.id}
+          onClick={() => !disabled && onAct(a)}
+          disabled={disabled}
+          aria-keyshortcuts={a.key}
+          style={{
+            flex: 1, padding: "10px 12px", borderRadius: 12, textAlign: "left",
+            cursor: disabled ? "default" : "pointer", fontFamily: F,
+            opacity: disabled ? 0.4 : 1, transition: "opacity .2s, transform .1s",
+            background: a.primary
+              ? `linear-gradient(180deg,${T.accent},#7E22CE)`
+              : `linear-gradient(180deg,${T.panelAlt},${T.panel})`,
+            border: `1px solid ${a.primary ? "rgba(255,255,255,.25)" : T.line}`,
+            boxShadow: a.primary ? `0 6px 18px ${T.accent}40` : "0 2px 8px rgba(0,0,0,.4)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <span style={{ color: T.text, fontWeight: 800, fontSize: 13.5 }}>{a.label}</span>
+            {a.key && <Key>{a.key}</Key>}
+          </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-        <button style={{ ...base, background: "transparent", border: `1.5px solid ${C.neg}`, color: C.neg }} onClick={() => onAction("FOLD", 0)}>
-          Fold
+          {/* EV no subtítulo: o jogador aprende o custo antes de clicar,
+              não só depois de errar. */}
+          {showEv && a.ev != null && (
+            <div style={{
+              marginTop: 3, fontSize: 10.5, fontWeight: 700,
+              color: a.ev === 0 ? T.ok : T.dim, ...num,
+            }}>
+              EV {fmtEv(a.ev)} bb
+            </div>
+          )}
         </button>
-        <button style={{ ...base, background: C.panel2, color: C.text, border: `1px solid ${C.line}` }} onClick={() => onAction("CHECK", 0)}>
-          Check
-        </button>
-        <button style={{ ...base, background: C.panel2, color: C.text, border: `1px solid ${C.line}` }} onClick={() => onAction("CALL", callAmount)}>
-          Call
-          <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2, fontWeight: 700 }}>{callAmount.toFixed(1)} bb</div>
-        </button>
-      </div>
+      ))}
     </div>
   );
 }
