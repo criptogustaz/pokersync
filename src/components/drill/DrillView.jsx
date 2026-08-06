@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Loader2, AlertTriangle, SkipForward, ChevronRight } from "lucide-react";
+import { ArrowLeft, Loader2, AlertTriangle, SkipForward, Filter } from "lucide-react";
 import { C, font } from "../theme.js";
 import PokerTable from "./PokerTable.jsx";
 import ActionBar from "./ActionBar.jsx";
@@ -11,21 +11,24 @@ import { useFacets } from "../../services/useFacets.js";
 import { parseBoard, parseHeroCombo } from "../../utils/parseBoard.js";
 
 /* ==================================================================
-   LAYOUT FULLSCREEN SEM SCROLL
+   LAYOUT DE 3 COLUNAS
 
-   Container = position:fixed inset:0. Tira o DrillView do fluxo do App
-   (Dashboard etc.) — o wrapper pai não influencia mais a altura, então
-   o scroll externo não aparece. Um useEffect bloqueia overflow do
-   body enquanto a tela está montada, garantindo que nada rola atrás.
+   O widescreen sobrava ~500px de cada lado da mesa sem uso. Agora:
+     ┌──────────────────────────────────────────────────────┐
+     │  header                                              │
+     ├──────────┬─────────────────────────┬─────────────────┤
+     │ filtros  │         MESA            │  GTO Feedback   │
+     │ (chips)  │                         │  ou stats       │
+     ├──────────┴─────────────────────────┴─────────────────┤
+     │              ActionBar (bet sizes)                   │
+     └──────────────────────────────────────────────────────┘
 
-   Estrutura interna:
-     header       flex-shrink:0  — voltar + título + sessão inline + próxima
-     context bar  flex-shrink:0  — cenário + gatilho do FilterDrawer
-     mesa          flex:1        — centralizada, com maxWidth/maxHeight
-     rodapé       flex-shrink:0  — ActionBar OU GtoFeedback
+   Filtros deixaram de morar em drawer — agora são chips permanentes,
+   sempre visíveis. O FilterDrawer sobra como fallback (botão discreto
+   no header) pra facets além de posição/ação/rua.
 
-   A mesa nunca cresce além de 820×460. Em widescreen sobra ar em
-   volta; em viewport pequena, ela encolhe pra caber.
+   position: fixed inset: 16 — a tela flutua com respiro, não é
+   fullscreen absoluto.
 ===================================================================*/
 
 const SEAT_INVOLVEMENT = [
@@ -39,18 +42,27 @@ const SEAT_INVOLVEMENT = [
   { pos: "MP", inHand: true },
 ];
 
-const FILTER_LABELS = {
-  street: "Street",
-  action: "Ação",
-  position: "Posição",
-  heroPosition: "Posição",
-  villainPosition: "Vilão",
-  stack: "Stack",
-  effectiveStack: "Stack",
-  format: "Formato",
-};
+/* Snapshot de facets — mesmo fallback que o FilterDrawer usa. */
+const FACETS_FALLBACK = [
+  { position: "BB", action: "vs Open", street: "Flop", n: 50 },
+  { position: "BB", action: "vs Open", street: "Turn", n: 300 },
+  { position: "BB", action: "vs Open", street: "River", n: 900 },
+  { position: "BB", action: "3-Bet", street: "Flop", n: 30 },
+  { position: "BB", action: "3-Bet", street: "Turn", n: 180 },
+  { position: "BB", action: "3-Bet", street: "River", n: 540 },
+  { position: "BTN", action: "vs Open", street: "Flop", n: 10 },
+  { position: "BTN", action: "vs Open", street: "Turn", n: 60 },
+  { position: "BTN", action: "vs Open", street: "River", n: 180 },
+  { position: "SB", action: "3-Bet", street: "Flop", n: 10 },
+  { position: "SB", action: "3-Bet", street: "Turn", n: 60 },
+  { position: "SB", action: "3-Bet", street: "River", n: 180 },
+];
 
-const NEUTRAL_VALUES = new Set(["", "Qualquer", "Todos", "Todas", "Ambos", "Any", "all"]);
+const SIDEBAR_SECTIONS = [
+  { key: "position", label: "Posição", options: ["BB", "BTN", "SB"] },
+  { key: "action", label: "Situação", options: ["vs Open", "3-Bet"] },
+  { key: "street", label: "Rua", options: ["Flop", "Turn", "River"] },
+];
 
 function parseActionString(raw) {
   const parts = String(raw).trim().split(/\s+/);
@@ -59,123 +71,254 @@ function parseActionString(raw) {
   return { type, sizing };
 }
 
-/* Animações globais compartilhadas por toda a tela */
+/* Animações globais */
 const GLOBAL_ANIMATIONS = `
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  @keyframes pulseGlow {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
-    50% { box-shadow: 0 0 0 4px rgba(255,255,255,0.06); }
-  }
 `;
 
 /* ------------------------------------------------------------------
-   Barra de contexto com hover mais vivo nos chips
+   SIDEBAR de filtros — chips permanentes, sempre visíveis. Cascateia
+   igual ao FilterDrawer: escolher SB com "vs Open" ativo limpa a ação
+   (que não existe pra SB). Opções sem spot ficam disabled.
 -------------------------------------------------------------------*/
-function ContextChip({ chip, onClick }) {
+function FilterChip({ label, active, disabled, onClick }) {
   const [h, setH] = useState(false);
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
-      title={`${chip.label}: ${chip.value}`}
+      title={disabled ? "Sem mãos para esta combinação" : undefined}
       style={{
         ...font,
-        display: "flex",
-        alignItems: "baseline",
-        gap: 6,
-        padding: "4px 10px",
-        borderRadius: 7,
-        background: h ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.05)",
-        border: h ? "1px solid rgba(255,255,255,0.22)" : "1px solid rgba(255,255,255,0.08)",
-        cursor: "pointer",
+        padding: "6px 12px",
+        borderRadius: 8,
+        fontSize: 12,
+        fontWeight: 700,
+        cursor: disabled ? "not-allowed" : "pointer",
+        border: active
+          ? "1px solid rgba(255,255,255,0.9)"
+          : disabled
+            ? "1px dashed rgba(255,255,255,0.07)"
+            : "1px solid rgba(255,255,255,0.10)",
+        background: active
+          ? "#FFFFFF"
+          : disabled
+            ? "transparent"
+            : h ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.02)",
+        color: active
+          ? "#111111"
+          : disabled
+            ? "rgba(255,255,255,0.18)"
+            : h ? "#FFFFFF" : "rgba(255,255,255,0.55)",
+        textDecoration: disabled ? "line-through" : "none",
+        transition: "all 160ms ease",
+        transform: h && !disabled && !active ? "translateY(-1px)" : "translateY(0)",
         whiteSpace: "nowrap",
-        transition: "all 180ms ease",
-        transform: h ? "translateY(-1px)" : "translateY(0)",
       }}
     >
-      <span
-        style={{
-          fontSize: 9, fontWeight: 700, textTransform: "uppercase",
-          letterSpacing: "0.1em", color: "rgba(255,255,255,0.4)",
-        }}
-      >
-        {chip.label}
-      </span>
-      <span style={{ fontSize: 12, fontWeight: 700, color: "#FFFFFF" }}>{chip.value}</span>
+      {label}
     </button>
   );
 }
 
-function ContextBar({ filters, onOpen, children }) {
-  const chips = useMemo(() => {
-    return Object.entries(filters || {})
-      .filter(([, v]) => {
-        if (Array.isArray(v)) return v.length > 0;
-        return v !== null && v !== undefined && !NEUTRAL_VALUES.has(String(v));
-      })
-      .map(([k, v]) => ({
-        key: k,
-        label: FILTER_LABELS[k] || k,
-        value: Array.isArray(v) ? v.join(" · ") : String(v),
-      }));
-  }, [filters]);
+function FilterSidebar({ filters, onSet, facets, onOpenAdvanced, activeCount }) {
+  const rows = facets && facets.length ? facets : FACETS_FALLBACK;
+
+  const counts = useMemo(() => {
+    const out = {};
+    SIDEBAR_SECTIONS.forEach(({ key, options }) => {
+      out[key] = {};
+      options.forEach((opt) => {
+        out[key][opt] = rows
+          .filter((r) => r[key] === opt)
+          .filter((r) => SIDEBAR_SECTIONS.every(({ key: k }) => k === key || !filters[k] || r[k] === filters[k]))
+          .reduce((s, r) => s + r.n, 0);
+      });
+    });
+    return out;
+  }, [rows, filters]);
+
+  const toggle = (key, opt) => {
+    const current = filters[key];
+    const nextValue = current === opt ? null : opt;
+    onSet(key, nextValue);
+    // Cascade: limpa outras dimensões que ficariam impossíveis
+    SIDEBAR_SECTIONS.forEach(({ key: k }) => {
+      if (k === key || !filters[k]) return;
+      const ok = rows.some((r) =>
+        r[key] === (nextValue ?? r[key]) &&
+        SIDEBAR_SECTIONS.every(({ key: kk }) => kk === key || !filters[kk] || r[kk] === filters[kk])
+      );
+      if (!ok) onSet(k, null);
+    });
+  };
 
   return (
-    <div
+    <aside
       style={{
-        display: "flex", alignItems: "center", gap: 10,
-        padding: "6px 8px 6px 14px", borderRadius: 12,
-        background: "#0F0F0F",
-        border: "1px solid rgba(255,255,255,0.10)",
-        flexShrink: 0,
+        ...font,
+        display: "flex", flexDirection: "column", gap: 18,
+        padding: "16px 14px",
+        borderRadius: 14,
+        background: "linear-gradient(180deg, #0F0F0F, #0A0A0A)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.04)",
+        overflowY: "auto",
       }}
     >
-      <span
-        style={{
-          fontSize: 9, fontWeight: 700, textTransform: "uppercase",
-          letterSpacing: "0.14em", color: "rgba(255,255,255,0.32)", flexShrink: 0,
-        }}
-      >
-        Cenário
-      </span>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0, flexWrap: "wrap" }}>
-        {chips.length === 0 ? (
-          <button
-            onClick={onOpen}
-            style={{
-              ...font, display: "flex", alignItems: "center", gap: 6,
-              background: "transparent", border: 0, padding: 0, cursor: "pointer",
-              fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.5)",
-              transition: "color 180ms ease",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#FFFFFF")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.5)")}
-          >
-            Nenhum filtro aplicado — escolha uma situação para treinar
-            <ChevronRight size={14} strokeWidth={2} />
-          </button>
-        ) : (
-          chips.map((chip, i) => (
-            <React.Fragment key={chip.key}>
-              {i > 0 && <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 12 }}>›</span>}
-              <ContextChip chip={chip} onClick={onOpen} />
-            </React.Fragment>
-          ))
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span style={{
+          fontSize: 10, fontWeight: 800, letterSpacing: "0.16em",
+          textTransform: "uppercase", color: "rgba(255,255,255,0.4)",
+        }}>
+          Cenário
+        </span>
+        {activeCount > 0 && (
+          <span style={{
+            fontSize: 9, fontWeight: 700, padding: "2px 7px", borderRadius: 999,
+            background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)",
+          }}>
+            {activeCount} ativo{activeCount > 1 ? "s" : ""}
+          </span>
         )}
       </div>
 
-      <div style={{ flexShrink: 0 }}>{children}</div>
+      {SIDEBAR_SECTIONS.map((section) => (
+        <div key={section.key} style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+          <span style={{
+            fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
+            textTransform: "uppercase", color: "rgba(255,255,255,0.35)",
+          }}>
+            {section.label}
+          </span>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {section.options.map((opt) => (
+              <FilterChip
+                key={opt}
+                label={opt}
+                active={filters[section.key] === opt}
+                disabled={counts[section.key][opt] === 0}
+                onClick={() => toggle(section.key, opt)}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <button
+        onClick={onOpenAdvanced}
+        style={{
+          ...font, marginTop: "auto",
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          padding: "8px 12px", borderRadius: 10, cursor: "pointer",
+          background: "transparent", border: "1px solid rgba(255,255,255,0.10)",
+          color: "rgba(255,255,255,0.5)", fontSize: 11, fontWeight: 700,
+          transition: "all 160ms ease",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+          e.currentTarget.style.color = "#FFFFFF";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = "transparent";
+          e.currentTarget.style.color = "rgba(255,255,255,0.5)";
+        }}
+      >
+        <Filter size={12} strokeWidth={2} />
+        Filtros avançados
+      </button>
+    </aside>
+  );
+}
+
+/* ------------------------------------------------------------------
+   Painel lateral direito — GtoFeedback ou stats de sessão detalhados.
+-------------------------------------------------------------------*/
+function RightPanel({ hand, userAction, context, onFeedbackResult, sessionStats }) {
+  if (userAction && hand) {
+    return (
+      <aside style={{ overflowY: "auto", animation: "fadeInUp 240ms ease-out" }}>
+        <GtoFeedback
+          userAction={userAction}
+          gtoNodes={hand.gtoNodes}
+          heroCards={hand.heroCards}
+          context={context}
+          onResult={onFeedbackResult}
+        />
+      </aside>
+    );
+  }
+
+  const { hits, total, sessionPct, avgFreq } = sessionStats;
+  return (
+    <aside
+      style={{
+        ...font,
+        padding: "16px 14px", borderRadius: 14,
+        background: "linear-gradient(180deg, #0F0F0F, #0A0A0A)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        display: "flex", flexDirection: "column", gap: 14,
+      }}
+    >
+      <span style={{
+        fontSize: 10, fontWeight: 800, letterSpacing: "0.16em",
+        textTransform: "uppercase", color: "rgba(255,255,255,0.4)",
+      }}>
+        Sessão
+      </span>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <StatRow
+          label="Acertos GTO"
+          value={total > 0 ? `${hits}/${total}` : "—"}
+          accent={hits > 0 ? C.pos : null}
+        />
+        <StatRow
+          label="Aproveitamento"
+          value={total > 0 ? `${sessionPct}%` : "—"}
+        />
+        <StatRow
+          label="Freq. média jogada"
+          value={total > 0 ? `${avgFreq}%` : "—"}
+        />
+      </div>
+
+      {hand ? (
+        <div style={{
+          marginTop: "auto", paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)",
+          fontSize: 11, color: "rgba(255,255,255,0.4)", lineHeight: 1.5,
+        }}>
+          Escolha uma ação na barra abaixo — o feedback GTO aparece aqui.
+        </div>
+      ) : (
+        <div style={{
+          marginTop: "auto", paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)",
+          fontSize: 11, color: "rgba(255,255,255,0.4)", lineHeight: 1.5,
+        }}>
+          Selecione posição, situação e rua nos filtros ao lado pra começar.
+        </div>
+      )}
+    </aside>
+  );
+}
+
+function StatRow({ label, value, accent }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.45)" }}>{label}</span>
+      <span style={{ fontSize: 16, fontWeight: 800, color: accent || "#FFFFFF" }}>{value}</span>
     </div>
   );
 }
 
-function SessionInline({ handIdx, handsTotal, hits, total, sessionPct, avgFreq }) {
+/* Header inline session + próxima */
+function SessionInline({ handIdx, handsTotal, hits, total, sessionPct }) {
   const dim = "rgba(255,255,255,0.4)";
   const soft = "rgba(255,255,255,0.65)";
   return (
@@ -187,17 +330,15 @@ function SessionInline({ handIdx, handsTotal, hits, total, sessionPct, avgFreq }
         <>
           <span style={{ opacity: 0.4 }}>·</span>
           <span>
-            <span style={{ color: hits > 0 ? C.pos : soft, fontWeight: 700 }}>{hits}/{total}</span> acertos ({sessionPct}%)
+            <span style={{ color: hits > 0 ? C.pos : soft, fontWeight: 700 }}>{hits}/{total}</span>
+            {" "}acertos ({sessionPct}%)
           </span>
-          <span style={{ opacity: 0.4 }}>·</span>
-          <span>freq <span style={{ color: soft, fontWeight: 700 }}>{avgFreq}%</span></span>
         </>
       )}
     </div>
   );
 }
 
-/* Botão de próxima mão com hover animado */
 function NextButton({ onClick }) {
   const [h, setH] = useState(false);
   return (
@@ -205,7 +346,6 @@ function NextButton({ onClick }) {
       onClick={onClick}
       onMouseEnter={() => setH(true)}
       onMouseLeave={() => setH(false)}
-      title="Próxima mão"
       style={{
         display: "flex", alignItems: "center", gap: 6,
         background: h ? "#F5F5F5" : "#FFFFFF", color: "#111111",
@@ -234,16 +374,14 @@ export default function DrillView({ onBack }) {
 
   const hand = hands[idx] || null;
 
-  /* Trava o scroll do body enquanto o Modo Treino está montado.
-     Combinado com position:fixed no wrapper, garante que nada rola
-     atrás da tela — independente do App/Dashboard pai. */
   useEffect(() => {
-    const prev = { overflow: document.body.style.overflow, htmlOverflow: document.documentElement.style.overflow };
+    const prevBody = document.body.style.overflow;
+    const prevHtml = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
     return () => {
-      document.body.style.overflow = prev.overflow;
-      document.documentElement.style.overflow = prev.htmlOverflow;
+      document.body.style.overflow = prevBody;
+      document.documentElement.style.overflow = prevHtml;
     };
   }, []);
 
@@ -337,67 +475,20 @@ export default function DrillView({ onBack }) {
   const sessionPct = stats.total > 0 ? Math.round((stats.hits / stats.total) * 100) : 0;
   const avgFreq = stats.total > 0 ? Math.round((stats.freqSum / stats.total) * 100) : 0;
 
-  const emptyState = () => {
-    if (loading) {
-      return (
-        <>
-          <Loader2 size={32} color="rgba(255,255,255,0.5)" style={{ animation: "spin 1s linear infinite" }} />
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Carregando mãos...</p>
-        </>
-      );
-    }
-    if (error) {
-      return (
-        <>
-          <AlertTriangle size={32} color={C.neg} />
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Erro ao carregar mãos.</p>
-          <button
-            onClick={reload}
-            style={{ background: "#FFFFFF", color: "#111111", border: 0, borderRadius: 10, padding: "10px 24px", cursor: "pointer", fontWeight: 700, fontSize: 13 }}
-          >
-            Tentar novamente
-          </button>
-        </>
-      );
-    }
-    return (
-      <>
-        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14, textAlign: "center" }}>
-          {activeCount > 0
-            ? "Nenhuma mão encontrada para esses filtros."
-            : "Escolha uma situação nos filtros para começar a treinar."}
-        </p>
-        <div style={{ display: "flex", gap: 10 }}>
-          {activeCount > 0 && (
-            <button
-              onClick={resetFilters}
-              style={{ background: "#1E1E1E", color: "#FFFFFF", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: "10px 24px", cursor: "pointer", fontWeight: 600, fontSize: 13 }}
-            >
-              Limpar filtros
-            </button>
-          )}
-          <button
-            onClick={() => setFiltersOpen(true)}
-            style={{ background: "#FFFFFF", color: "#111111", border: 0, borderRadius: 10, padding: "10px 24px", cursor: "pointer", fontWeight: 700, fontSize: 13 }}
-          >
-            {activeCount > 0 ? "Ajustar filtros" : "Definir cenário"}
-          </button>
-        </div>
-      </>
-    );
-  };
-
   return (
     <div
       style={{
         ...font,
         position: "fixed",
-        inset: 0,
-        background: "#000000",
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
-        padding: 10,
+        inset: 16,               /* respiro nas bordas — não é fullscreen */
+        background: "#050505",
+        borderRadius: 18,
+        border: "1px solid rgba(255,255,255,0.06)",
+        boxShadow: "0 30px 80px rgba(0,0,0,0.7)",
+        display: "grid",
+        gridTemplateRows: "auto 1fr auto",   /* header, corpo, rodapé */
+        gap: 12,
+        padding: 14,
         boxSizing: "border-box",
         overflow: "hidden",
         zIndex: 40,
@@ -406,33 +497,25 @@ export default function DrillView({ onBack }) {
     >
       <style>{GLOBAL_ANIMATIONS}</style>
 
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+      {/* HEADER */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button
           onClick={onBack}
           title="Voltar"
           style={{
             display: "grid", placeItems: "center", width: 36, height: 36, borderRadius: 10,
             background: "#1A1A1A", border: "1px solid rgba(255,255,255,0.10)",
-            color: "rgba(255,255,255,0.55)", cursor: "pointer", flexShrink: 0,
+            color: "rgba(255,255,255,0.55)", cursor: "pointer",
             transition: "all 180ms ease",
           }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "#252525";
-            e.currentTarget.style.color = "#FFFFFF";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "#1A1A1A";
-            e.currentTarget.style.color = "rgba(255,255,255,0.55)";
-          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "#252525"; e.currentTarget.style.color = "#FFFFFF"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "#1A1A1A"; e.currentTarget.style.color = "rgba(255,255,255,0.55)"; }}
         >
           <ArrowLeft size={16} strokeWidth={1.5} />
         </button>
-
-        <h1 style={{ fontSize: 18, fontWeight: 700, color: "#FFFFFF", margin: 0, flexShrink: 0 }}>
+        <h1 style={{ fontSize: 18, fontWeight: 700, color: "#FFFFFF", margin: 0 }}>
           Modo Treino
         </h1>
-
         <div style={{ flex: 1, minWidth: 0 }}>
           {hand && (
             <SessionInline
@@ -441,77 +524,117 @@ export default function DrillView({ onBack }) {
               hits={stats.hits}
               total={stats.total}
               sessionPct={sessionPct}
-              avgFreq={avgFreq}
             />
           )}
         </div>
-
         {userAction && hand && <NextButton onClick={nextHand} />}
       </div>
 
-      {/* Context bar */}
-      <ContextBar filters={filters} onOpen={() => setFiltersOpen(true)}>
-        <FilterDrawer
-          open={filtersOpen}
-          onOpen={() => setFiltersOpen(true)}
-          onClose={() => setFiltersOpen(false)}
-          filters={filters}
-          onSet={setFilter}
-          onReset={resetFilters}
-          activeCount={activeCount}
-          facets={facets}
-        />
-      </ContextBar>
-
-      {/* Mesa (centralizada, com limite de tamanho) */}
+      {/* CORPO: 3 COLUNAS */}
       <div
         style={{
-          flex: 1, minHeight: 0,
-          display: "flex", alignItems: "center", justifyContent: "center",
+          display: "grid",
+          gridTemplateColumns: "240px minmax(0, 1fr) 280px",
+          gap: 12,
+          minHeight: 0,
+        }}
+      >
+        <FilterSidebar
+          filters={filters}
+          onSet={setFilter}
+          facets={facets}
+          onOpenAdvanced={() => setFiltersOpen(true)}
+          activeCount={activeCount}
+        />
+
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: 0 }}>
+          {hand ? (
+            <div style={{ width: "100%", height: "100%", maxWidth: 820, maxHeight: 460, margin: "auto" }}>
+              <PokerTable hand={tableHand} heroTimer={heroTimer} />
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+              {loading ? (
+                <>
+                  <Loader2 size={32} color="rgba(255,255,255,0.5)" style={{ animation: "spin 1s linear infinite" }} />
+                  <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Carregando mãos...</p>
+                </>
+              ) : error ? (
+                <>
+                  <AlertTriangle size={32} color={C.neg} />
+                  <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14 }}>Erro ao carregar mãos.</p>
+                  <button
+                    onClick={reload}
+                    style={{ background: "#FFFFFF", color: "#111111", border: 0, borderRadius: 10, padding: "10px 24px", cursor: "pointer", fontWeight: 700, fontSize: 13 }}
+                  >
+                    Tentar novamente
+                  </button>
+                </>
+              ) : (
+                <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 14, textAlign: "center", maxWidth: 320 }}>
+                  {activeCount > 0
+                    ? "Nenhuma mão encontrada para esses filtros."
+                    : "Selecione posição, situação e rua nos filtros ao lado pra começar."}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <RightPanel
+          hand={hand}
+          userAction={userAction}
+          context={context}
+          onFeedbackResult={onFeedbackResult}
+          sessionStats={{ hits: stats.hits, total: stats.total, sessionPct, avgFreq }}
+        />
+      </div>
+
+      {/* RODAPÉ: ActionBar sempre presente quando há mão. Slot com
+          min-height garante que ela nunca some silenciosamente por
+          falta de espaço. */}
+      <div
+        style={{
+          minHeight: 72,
+          display: "flex",
+          alignItems: "center",
           padding: "0 4px",
         }}
       >
-        {hand ? (
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 820,
-              height: "100%",
-              maxHeight: 460,
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <PokerTable hand={tableHand} heroTimer={heroTimer} />
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
-            {emptyState()}
-          </div>
-        )}
-      </div>
-
-      {/* Rodapé — ActionBar OU GtoFeedback */}
-      {hand && (
-        <div style={{ flexShrink: 0, animation: "fadeInUp 240ms ease-out" }} key={userAction ? "feedback" : "action"}>
-          {userAction ? (
-            <GtoFeedback
-              userAction={userAction}
-              gtoNodes={hand.gtoNodes}
-              heroCards={hand.heroCards}
-              context={context}
-              onResult={onFeedbackResult}
-            />
-          ) : (
+        {hand && !userAction && (
+          <div style={{ width: "100%", animation: "fadeInUp 220ms ease-out" }}>
             <ActionBar
               pot={hand.pot}
               betSizings={betSizings}
               onAction={onAction}
               callAmount={Math.round(hand.pot * 0.5 * 10) / 10}
             />
-          )}
-        </div>
-      )}
+          </div>
+        )}
+        {hand && userAction && (
+          <div style={{
+            ...font, width: "100%",
+            padding: "12px 16px", borderRadius: 12,
+            background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)",
+            fontSize: 12, color: "rgba(255,255,255,0.5)",
+            textAlign: "center",
+          }}>
+            Ação registrada — leia o feedback à direita e siga pra próxima mão.
+          </div>
+        )}
+      </div>
+
+      {/* FilterDrawer avançado — botão do sidebar abre este */}
+      <FilterDrawer
+        open={filtersOpen}
+        onOpen={() => setFiltersOpen(true)}
+        onClose={() => setFiltersOpen(false)}
+        filters={filters}
+        onSet={setFilter}
+        onReset={resetFilters}
+        activeCount={activeCount}
+        facets={facets}
+      />
     </div>
   );
 }
